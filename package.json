@@ -1,0 +1,54 @@
+{
+  "name": "personal-senior-engineering",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview",
+    "format": "prettier --write .",
+    "lint:prettier": "prettier --fix --write \"**/*.{js,ts,mjs,cjs,json,tsx,css,less,scss,vue,html,md}\"",
+    "lint:eslint": "eslint .",
+    "check": "prettier --check .",
+    "generate-module": "node scripts/generate/index.cjs",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "element-plus": "^2.11.4",
+    "lodash": "^4.17.21",
+    "pinia": "^3.0.3",
+    "vue": "^3.5.21"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.37.0",
+    "@types/node": "^24.5.2",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "@vue/tsconfig": "^0.8.1",
+    "chokidar": "^4.0.3",
+    "eslint": "^9.37.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-vue": "^10.5.0",
+    "globals": "^16.4.0",
+    "husky": "^9.1.7",
+    "jsonc-parser": "^3.3.1",
+    "lint-staged": "^16.2.4",
+    "prettier": "3.6.2",
+    "sass": "^1.93.2",
+    "sass-loader": "^16.0.5",
+    "type-fest": "^5.0.1",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.46.0",
+    "unplugin-auto-import": "^20.2.0",
+    "unplugin-vue-components": "^29.1.0",
+    "vite": "^7.1.7",
+    "vue-tsc": "^3.0.7"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=8.1.0",
+    "pnpm": ">=9.0.0"
+  }
+
+}

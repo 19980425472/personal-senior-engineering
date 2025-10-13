@@ -1,0 +1,15 @@
+# .prettierignore
+
+# A list of file extensions that should be ignored by Prettier.
+*.md
+*.json
+ dist
+ node_modules
+ coverage
+ __tests__
+ public
+ build
+ .git
+ .github
+ .vscode
+ .yaml
