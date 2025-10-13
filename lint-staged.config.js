@@ -55,10 +55,10 @@ export default {
     '*.ts': () => 'tsc --noEmit --skipLibCheck --strict',
 
     // 4. 样式文件：格式+语法校验
-    // '*.{css,scss,sass,less}': [
-    //     'prettier --write',
-    //     'stylelint --fix --allow-empty-input' // 样式lint（需配置.stylelintrc）
-    // ],
+    '*.{css,scss,sass,less}': [
+        'prettier --write',
+        'stylelint --fix --allow-empty-input' // 样式lint（需配置.stylelintrc）
+    ],
 
     // 5. 配置/文档文件：格式+合法性校验
     '*.{json,json5,yml,yaml}': [
