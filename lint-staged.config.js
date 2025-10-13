@@ -70,10 +70,10 @@ export default {
     //             .map((f) => `jsonlint -q ${f}`)
     //             .join(' && ')
     // ],
-    // '*.{md,mdx}': [
-    //     'prettier --write',
-    //     'markdown-link-check --quiet' // 检查Markdown死链
-    // ],
+    '*.{md,mdx}': [
+        'prettier --write',
+        'markdown-link-check --quiet' // 检查Markdown死链
+    ],
 
     // 6. 测试文件：确保测试代码质量
     '*.{spec,test}.{ts,js,vue}': [
