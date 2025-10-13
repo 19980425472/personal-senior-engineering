@@ -1,6 +1,5 @@
 // const fs = require('fs')
 // const path = require('path')
-// const checkVueFilename = require('./scripts/check-vue-filename.mjs')
 export default {
     // 1. 脚本文件（TS/JS/JSX/TSX）：语法+类型+安全校验
     '*.{ts,js,tsx,jsx}': [
