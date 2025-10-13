@@ -61,15 +61,15 @@ export default {
     // ],
 
     // 5. 配置/文档文件：格式+合法性校验
-    // '*.{json,json5,yml,yaml}': [
-    //     'prettier --write',
-    //     // JSON语法校验
-    //     (files) =>
-    //         files
-    //             .filter((f) => f.endsWith('.json'))
-    //             .map((f) => `jsonlint -q ${f}`)
-    //             .join(' && ')
-    // ],
+    '*.{json,json5,yml,yaml}': [
+        'prettier --write',
+        // JSON语法校验
+        (files) =>
+            files
+                .filter((f) => f.endsWith('.json'))
+                .map((f) => `jsonlint -q ${f}`)
+                .join(' && ')
+    ],
     '*.{md,mdx}': [
         'prettier --write',
         'markdown-link-check --quiet' // 检查Markdown死链
