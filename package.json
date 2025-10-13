@@ -12,7 +12,7 @@
     "lint:eslint": "eslint .",
     "check": "prettier --check .",
     "generate-module": "node scripts/generate/index.cjs",
-    "prepare": "husky"
+    "prepare": "node .husky/install.mjs"
   },
   "dependencies": {
     "element-plus": "^2.11.4",

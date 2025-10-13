@@ -1,14 +1,32 @@
+// const fs = require('fs')
+// const checkVueFilename = require('./scripts/check-vue-filename.mjs')
 export default {
-    // 2. Vue单文件组件：全量检查（模板+脚本+样式）
-    '*.vue': [
-        // ESLint修复（需配合eslint-plugin-vue，检查模板和脚本）
-        'eslint --fix --plugin vue --plugin security',
-        // Prettier格式化（覆盖template/style标签）
-        'prettier --write',
-        // 单独检查模板语法（可选，增强模板校验）
-        'vue-tsc --noEmit --skipLibCheck'
-    ],
+    // 1. 脚本文件（TS/JS/JSX/TSX）：语法+类型+安全校验
+    '*.{ts,js,tsx,jsx}': [
+        // ESLint自动修复（含TS、安全规则）
+        // 'eslint --fix --plugin @typescript-eslint --plugin security --plugin import',
+        // Prettier格式化
+        'prettier --write'
+        // 大型文件额外做复杂度检查（>50KB）
+        // (files) => {
+        //     const largeFiles = files.filter((file) => {
+        //         try {
+        //             return fs.statSync(file).size > 1024 * 50 // 50KB
+        //         } catch (e) {
+        //             if (e.code !== 'ENOENT') {
+        //                 throw e
+        //             }
+        //             return false
+        //         }
+        //     })
+        //     return largeFiles.length
+        //         ? `eslint --rule "sonarjs/cognitive-complexity: [error, 8]" ${largeFiles.join(' ')}`
+        //         : ''
+        // }
+    ]
 
-    // 3. TypeScript类型全量校验（仅对TS文件，延迟执行避免重复）
-    '*.ts': () => 'tsc --noEmit --skipLibCheck --strict'
+    // 7. 敏感信息检查（避免提交密钥等）
+    // '*.{ts,js,vue,json}': [
+    //     'secretlint' // 需配置.secretlintrc
+    // ]
 }

@@ -1,1 +1,6 @@
-npx lint-staged
+
+# 如果在CI环境中，则不执行lint-staged
+[ -n "$CI" ] && exit 0
+
+# 调用 Node.js 逻辑文件（核心逻辑在这里）
+node .husky/pre-commit.cjs
