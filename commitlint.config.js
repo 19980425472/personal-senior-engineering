@@ -7,7 +7,7 @@ export default {
         'header-max-length': [2, 'always', 108],
         'subject-empty': [2, 'never'],
         'type-empty': [2, 'never'],
-        'subiect-case': [0],
+        'subject-case': [0],
         'type-enum': [
             2,
             'always',

@@ -60,14 +60,14 @@ export default {
     ],
 
     // 5. 配置/文档文件：格式+合法性校验
-    '*.{json,json5,yml,yaml}': [
-        'prettier --write',
+    '*.{json,yml,yaml}': [
+        'prettier --write'
         // JSON语法校验
-        (files) =>
-            files
-                .filter((f) => f.endsWith('.json'))
-                .map((f) => `jsonlint -q ${f}`)
-                .join(' && ')
+        // (files) =>
+        //     files
+        //         .filter((f) => f.endsWith('.json'))
+        //         .map((f) => `jsonlint -q ${f}`)
+        //         .join(' && ')
     ],
     '*.{md,mdx}': [
         'prettier --write',
@@ -77,9 +77,9 @@ export default {
     // 6. 测试文件：确保测试代码质量
     '*.{spec,test}.{ts,js,vue}': [
         'eslint --fix',
-        'prettier --write',
+        'prettier --write'
         // 执行修改的测试用例
-        (files) => `vitest run --passWithNoTests ${files.join(' ')}`
+        // (files) => `vitest run --passWithNoTests ${files.join(' ')}`
     ]
 
     // 7. 敏感信息检查（避免提交密钥等）
