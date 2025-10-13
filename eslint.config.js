@@ -6,7 +6,7 @@ import { defineConfig } from 'eslint/config'
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended'
 import eslintConfigPrettier from 'eslint-config-prettier/flat'
 // const checkVueFilename = require('./scripts/check-vue-filename.mjs')
-import checkVueFilename from './scripts/check-vue-filename.mjs'
+// import checkVueFilename from './scripts/check-vue-filename.mjs'
 
 export default defineConfig([
     eslintPluginPrettierRecommended,
@@ -210,7 +210,7 @@ export default defineConfig([
         },
 
         rules: {
-            checkVueFilename,
+            // checkVueFilename,
             // 开发环境允许使用console，生产环境禁止使用console
             'no-console': process.env.NODE_ENV === 'production' ? 'error' : 'warn',
             'vue/multi-word-component-names': [
