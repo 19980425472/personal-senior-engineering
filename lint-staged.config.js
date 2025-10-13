@@ -46,9 +46,9 @@ export default {
         // ESLint修复（Vue模板+脚本）
         // 'eslint --fix --plugin vue --plugin security',
         // Prettier格式化（覆盖template/style）
-        'prettier --write'
+        'prettier --write',
         // Vue模板类型检查（vue-tsc）
-        // 'vue-tsc --noEmit --skipLibCheck'
+        'vue-tsc --noEmit --skipLibCheck'
     ],
 
     // 3. TypeScript全量类型校验（延迟执行，避免重复）
