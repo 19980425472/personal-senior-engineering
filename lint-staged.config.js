@@ -1,4 +1,5 @@
 // const fs = require('fs')
+// const path = require('path')
 // const checkVueFilename = require('./scripts/check-vue-filename.mjs')
 export default {
     // 1. 脚本文件（TS/JS/JSX/TSX）：语法+类型+安全校验
@@ -9,19 +10,33 @@ export default {
         'prettier --write'
         // 大型文件额外做复杂度检查（>50KB）
         // (files) => {
+        //     // 拼接绝对路径，避免相对路径解析问题
+        //     const resolvePath = (file) => path.resolve(file)
+
         //     const largeFiles = files.filter((file) => {
         //         try {
-        //             return fs.statSync(file).size > 1024 * 50 // 50KB
+        //             // 用绝对路径获取文件信息
+        //             const stats = fs.statSync(resolvePath(file))
+        //             return stats.size > 1024 * 50 // 50KB
         //         } catch (e) {
         //             if (e.code !== 'ENOENT') {
+        //                 // 忽略"文件不存在"错误（可能已被删除）
         //                 throw e
         //             }
         //             return false
         //         }
         //     })
-        //     return largeFiles.length
-        //         ? `eslint --rule "sonarjs/cognitive-complexity: [error, 8]" ${largeFiles.join(' ')}`
-        //         : ''
+
+        //     if (largeFiles.length === 0) {
+        //         // 无大文件时返回无操作命令，避免空字符串
+        //         return 'echo "No large files to check"'
+        //     }
+
+        //     // 用单引号包裹每个文件路径，处理空格等特殊字符
+        //     const quotedFiles = largeFiles.map((file) => `'${resolvePath(file)}'`).join(' ')
+
+        //     // 返回构建好的 ESLint 命令
+        //     return `eslint --rule "sonarjs/cognitive-complexity: [error, 8]" ${quotedFiles}`
         // }
     ],
 
