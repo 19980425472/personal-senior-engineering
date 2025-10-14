@@ -37,14 +37,13 @@ class CommitGuide {
             console.log(`  ${i + 1}. ${type.emoji} ${type.name}`)
         })
 
-        while (true) {
-            const answer = await this.question('\n请输入数字选择: ')
-            const index = parseInt(answer) - 1
-            if (index >= 0 && index < config.types.length) {
-                return config.types[index]
-            }
-            console.log('❌ 选择无效')
+        const answer = await this.question('\n请输入数字选择: ')
+        const index = parseInt(answer) - 1
+        if (index >= 0 && index < config.types.length) {
+            return config.types[index]
         }
+        console.log('❌ 选择无效，默认使用 chore')
+        return config.types[6] // 默认 chore
     }
 
     async selectScope() {
@@ -65,11 +64,8 @@ class CommitGuide {
 
     async inputSubject() {
         console.log('\n📝 填写提交描述:')
-        while (true) {
-            const subject = await this.question('请输入描述: ')
-            if (subject.trim()) return subject.trim()
-            console.log('❌ 描述不能为空')
-        }
+        const subject = await this.question('请输入描述: ')
+        return subject.trim() || '更新代码'
     }
 
     async confirmCommit(type, scope, subject) {
@@ -89,33 +85,27 @@ class CommitGuide {
 
         try {
             console.log('\n🔄 执行提交中...')
-            execSync(`git commit -m "${message}" --no-verify`, {
+            execSync(`git commit -m "${message.replace(/"/g, '\\"')}" --no-verify`, {
                 stdio: 'inherit'
             })
             console.log('\n✅ 提交成功！')
             return true
-        } catch (error) {
-            console.log('\n❌ 提交失败:', error.message)
+        } catch {
+            console.log('\n❌ 提交失败')
             return false
         }
     }
 
-    async start() {
-        console.log('🚀 Git 提交引导')
-        console.log('====================')
-
+    async run() {
         try {
             const type = await this.selectType()
             const scope = await this.selectScope()
             const subject = await this.inputSubject()
 
             if (await this.confirmCommit(type, scope, subject)) {
-                const success = this.executeCommit(type, scope, subject)
-                return success ? 0 : 1
-            } else {
-                console.log('\n❌ 已取消提交')
-                return 1
+                return this.executeCommit(type, scope, subject) ? 0 : 1
             }
+            return 1
         } catch (error) {
             console.log('💥 出错:', error.message)
             return 1
@@ -125,13 +115,7 @@ class CommitGuide {
     }
 }
 
-// 启动引导并返回退出码
-new CommitGuide()
-    .start()
-    .then((exitCode) => {
-        process.exit(exitCode)
-    })
-    .catch((error) => {
-        console.error('致命错误:', error)
-        process.exit(1)
-    })
+// 同步执行，避免进程提前退出
+new CommitGuide().run().then((code) => {
+    process.exit(code)
+})
