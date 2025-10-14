@@ -58,7 +58,7 @@ function runLintStaged() {
     try {
         console.log('\n🔍 开始代码校验...')
         execSync('npx lint-staged', { stdio: 'inherit' }) // 输出实时打印到终端
-        console.log('\n✅ 所有校验通过，准备提交！')
+        console.log('\n✅ 所有缓存区 code校验通过，准备提交！')
     } catch {
         console.error('\n❌ 校验失败，请修复上述问题后重试')
         process.exit(1)

@@ -6,9 +6,14 @@ COMMIT_MSG=$(cat "$COMMIT_MSG_FILE" | head -n1 | xargs)
 # 如果是空信息或格式错误，启动引导
 if [ -z "$COMMIT_MSG" ] || [[ ! "$COMMIT_MSG" =~ ^(feat|fix|docs|style|refactor|test|chore|perf) ]]; then
   echo "🎯 启动提交引导..."
-  node scripts/commit-guide.js
+  node scripts/commit-guide.cjs
   exit 0
 fi
 
+
 # 否则用 commitlint 验证
 pnpm dlx commitlint --edit "$COMMIT_MSG_FILE"
+
+
+# 最后执行完应该执行一次 prettier，防止格式问题
+pnpm dlx prettier --fix --write "$COMMIT_MSG_FILE"

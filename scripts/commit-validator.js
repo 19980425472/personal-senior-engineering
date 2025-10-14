@@ -52,7 +52,7 @@ class CommitValidator {
     startGuideTool() {
         console.log('\n🚀 启动交互式提交引导...')
         try {
-            const guideProcess = spawn('node', ['scripts/commit-guide.js'], {
+            const guideProcess = spawn('node', ['scripts/commit-guide.cjs'], {
                 stdio: 'inherit',
                 shell: true
             })

@@ -15,7 +15,7 @@ const config = {
         { value: 'chore', name: '🔧 工具', emoji: '🔧' },
         { value: 'perf', name: '⚡ 性能', emoji: '⚡' }
     ],
-    scopes: ['全局', '前端', '后端', '移动端', '组件', '工具']
+    scopes: ['root', 'backend', 'frontend', 'mobile', 'web', 'components', 'utils']
 }
 
 class SimpleCommitGuide {
@@ -106,8 +106,7 @@ class SimpleCommitGuide {
     }
 
     async start() {
-        console.log('🚀 Git 提交引导')
-        console.log('====================')
+        console.log('-----------------------------------------------------------')
 
         try {
             const type = await this.selectType()
