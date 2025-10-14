@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 const fs = require('fs')
-const { spawnSync } = require('child_process')
 
 class CommitValidator {
     constructor() {
