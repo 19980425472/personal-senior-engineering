@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const fs = require('fs')
+const { spawnSync } = require('child_process')
 
 class CommitValidator {
     constructor() {
@@ -83,9 +84,23 @@ class CommitValidator {
         console.log('────────────────────────────────────────')
     }
 
+    //  这个函数里面需要告诉用户 去执行性命令 pnpm commit  或者 npm run commit  手动提交
     startCommitizen() {
-        console.log('\n🚀 请手动在控制台执行以下命令完成提交：')
-        console.log('   pnpm commit   或者  npm run commit')
+        console.log('\n⚠️  请使用 commitizen 提交')
+        console.log('')
+        console.log('   执行以下命令提交:')
+        console.log('   pnpm commit')
+        console.log('   npm run commit')
+    }
+
+    // 使用 commitlint 验证
+    runCommitlint() {
+        const result = spawnSync('npx', ['commitlint', '--edit', this.commitMsgFile], {
+            stdio: 'inherit',
+            shell: true
+        })
+
+        return result.status
     }
 
     validate() {
