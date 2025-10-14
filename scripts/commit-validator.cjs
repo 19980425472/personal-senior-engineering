@@ -86,8 +86,7 @@ class CommitValidator {
 
     //  这个函数里面需要告诉用户 去执行性命令 pnpm commit  或者 npm run commit  手动提交
     startCommitizen() {
-        console.log('\n⚠️  请使用 commitizen 提交')
-        console.log('')
+        console.log('\n⚠️  请使用 commitizen方式 提交')
         console.log('   执行以下命令提交:')
         console.log('   pnpm commit  或者  npm run commit')
         return 0
