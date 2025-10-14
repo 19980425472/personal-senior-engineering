@@ -1,0 +1,4 @@
+# 去调用 commit-validator.cjs执行检测
+node scripts/commit-validator.cjs 
+
+ 
