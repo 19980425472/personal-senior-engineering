@@ -1,7 +1,33 @@
 #!/bin/bash
 
 COMMIT_MSG_FILE="$1"
+USER_COMMIT_MSG=$(head -n1 "$COMMIT_MSG_FILE" | xargs)
 
-node scripts/commit-validator.cjs "$1"
+# echo "🔍 检测提交信息: '$USER_COMMIT_MSG'"
 
- 
+# # 标准类型列表（直接从你的配置里抄过来）
+# STANDARD_TYPES="feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|wip|workflow|types|release"
+# STANDARD_PATTERN="^($STANDARD_TYPES)(\([a-zA-Z0-9\-]+\))?: .+"
+
+# 检查格式
+# if [[ -z "$USER_COMMIT_MSG" ]]; then
+#     echo "❌ 提交信息为空"
+#     echo "🚀 启动插件提交..."
+#     pnpm commit
+#     exit $?
+# elif [[ "$USER_COMMIT_MSG" =~ $STANDARD_PATTERN ]]; then
+#     echo "✅ 格式正确，进行规则验证..."
+#     pnpm dlx commitlint --edit "$COMMIT_MSG_FILE"
+#     exit $?
+# else
+#     echo "❌ 格式错误: '$USER_COMMIT_MSG'"
+#     echo "📝 正确格式: type(scope): description"
+#     echo "🎯 示例: feat(auth): 添加登录功能"
+#     echo "🚀 启动插件重新提交..."
+#     pnpm commit
+#     exit $?
+# fi
+
+# 直接执行package.json里面的commit命令
+
+# pnpm commit
