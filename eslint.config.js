@@ -240,7 +240,16 @@ export default defineConfig([
     // 配置块8：Node.js CJS文件专项配置（适配CJS规范，符合ESLint v9规范）
     {
         name: 'node/cjs-config', // 配置名称：明确为Node CJS文件的配置
-        files: ['**/*.cjs', '**/*.mjs', '**/*.config.js', '**/*.config.ts'], // 作用于CJS文件（如utils.cjs）和工具配置文件（如vite.config.js）
+        files: [
+            '**/*.cjs',
+            '**/*.mjs',
+            '**/*.config.js',
+            '**/*.config.ts',
+            '**/*msg.js',
+            '**/*.husky/*',
+            'config/**',
+            'scripts/**.js'
+        ], // 作用于CJS文件（如utils.cjs）和工具配置文件（如vite.config.js）
         languageOptions: {
             globals: { ...globals.node } // 启用Node全局变量（如require/process）
         },
