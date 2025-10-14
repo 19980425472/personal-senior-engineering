@@ -1,98 +1,137 @@
 #!/usr/bin/env node
 
-/**
- * 提交信息格式验证器
- * 作用：检查提交信息是否符合标准格式
- * 返回：0=通过, 1=不通过
- */
-
 const fs = require('fs')
-const path = require('path')
+const { spawnSync } = require('child_process')
 
 class CommitValidator {
     constructor() {
-        this.commitMsgFile = process.argv[2]
+        this.commitMsgFile = process.argv[2] // Git传递的提交信息临时文件路径
         this.userCommitMsg = this.getUserCommitMessage()
-        this.standardTypes = this.loadStandardTypes()
+        this.standardConfig = this.loadStandardConfig()
     }
 
-    // 读取用户提交信息
+    // 读取Git临时文件中的提交信息
     getUserCommitMessage() {
         try {
-            const content = fs.readFileSync(this.commitMsgFile, 'utf8').trim()
-            console.log(`🔍 检测提交信息: "${content}"`)
-            return content
+            return fs.readFileSync(this.commitMsgFile, 'utf8').trim()
         } catch {
-            console.log('❌ 无法读取提交信息文件')
             return ''
         }
     }
 
-    // 从 commitlint.config.js 加载标准类型
-    loadStandardTypes() {
+    // 加载commitlint配置（支持cz-git扩展）
+    loadStandardConfig() {
         try {
-            const configPath = path.resolve(process.cwd(), 'commitlint.config.js')
+            // 注意：路径需根据实际项目结构调整（当前假设脚本在.husky目录，配置在项目根目录）
+            delete require.cache[require.resolve('../../commitlint.config.js')]
+            const config = require('../../commitlint.config.js')
 
-            // 动态导入配置
-            const config = require(configPath)
-
-            // 从 prompt.types 或 rules.type-enum 获取类型
-            let types = []
-            if (config.prompt && config.prompt.types) {
-                types = config.prompt.types.map((item) => item.value)
-            } else if (config.rules && config.rules['type-enum']) {
-                types = config.rules['type-enum'][2] // 获取 type-enum 的第三个参数
+            return {
+                types: config.prompt?.types?.map((t) => t.value) || [
+                    'feat',
+                    'fix',
+                    'docs',
+                    'style',
+                    'refactor',
+                    'test',
+                    'chore',
+                    'perf'
+                ],
+                typesConfig: config.prompt?.types || [],
+                scopes: config.prompt?.scopes || []
             }
-
-            // 去重并过滤无效值
-            types = [...new Set(types)].filter(Boolean)
-
-            console.log(`📋 标准类型: ${types.join(', ')}`)
-            return types
         } catch {
-            console.log('⚠️ 配置加载失败，使用默认类型')
-            return ['feat', 'fix', 'docs', 'style', 'refactor', 'test', 'chore', 'perf']
+            console.log('❌ 配置加载失败，使用默认规范')
+            return {
+                types: ['feat', 'fix', 'docs', 'style', 'refactor', 'test', 'chore', 'perf'],
+                typesConfig: [],
+                scopes: []
+            }
         }
     }
 
-    // 检查是否符合标准格式
+    // 校验提交信息是否符合基础格式
     isStandardFormat(message) {
-        if (!message) {
-            console.log('❌ 提交信息为空')
-            return false
-        }
+        if (!message) return false
 
         const firstLine = message.split('\n')[0]
-
-        // 构建动态正则表达式
-        const typePattern = this.standardTypes.join('|')
+        const typePattern = this.standardConfig.types.join('|')
+        // 支持带scope（如feat(auth): ...）和不带scope（如fix: ...）的格式
         const pattern = new RegExp(`^(${typePattern})(\\([a-zA-Z0-9\\-]+\\))?: .+`)
 
-        const isValid = pattern.test(firstLine)
-
-        if (!isValid) {
-            console.log(`❌ 格式验证失败: "${firstLine}"`)
-            console.log(`✅ 期望格式: type(scope): description`)
-        } else {
-            console.log(`✅ 格式验证通过: "${firstLine}"`)
-        }
-
-        return isValid
+        return pattern.test(firstLine)
     }
 
-    // 执行验证
+    // 显示格式错误对比
+    showFormatComparison() {
+        const firstLine = this.userCommitMsg.split('\n')[0]
+
+        console.log('\n📊 格式分析报告：')
+        console.log(
+            '❌ 你的提交信息:',
+            this.userCommitMsg ? `"${firstLine}" 不符合规范` : '(空信息)'
+        )
+        console.log('\n✅ 标准格式示例：')
+
+        console.log('────────────────────────────────────────')
+    }
+
+    // 启动package.json中的commit命令（git-cz），并确保信息写入Git临时文件
+    startCommitizen() {
+        console.log('\n🚀 启动交互式提交工具...')
+
+        // 关键：通过--file参数将git-cz生成的信息写入Git临时文件
+        const result = spawnSync('npm', ['run', 'commit', '--', '--file', this.commitMsgFile], {
+            stdio: 'inherit', // 继承终端输入输出，确保交互式界面正常显示
+            shell: true
+        })
+
+        // 重新读取更新后的提交信息
+        this.userCommitMsg = this.getUserCommitMessage()
+        return result.status
+    }
+
+    // 用commitlint执行最终验证
+    runCommitlint() {
+        console.log('✅ 开始commitlint详细验证...')
+        const result = spawnSync('npx', ['commitlint', '--edit', this.commitMsgFile], {
+            stdio: 'inherit',
+            shell: true
+        })
+        return result.status
+    }
+
+    // 主验证流程
     validate() {
-        try {
-            const isValid = this.isStandardFormat(this.userCommitMsg)
-            return isValid ? 0 : 1
-        } catch (error) {
-            console.log(`💥 验证过程出错: ${error.message}`)
+        console.log('🔍 提交信息验证启动')
+        console.log('========================================')
+
+        // 首次校验：如果格式正确，直接走commitlint
+        if (this.isStandardFormat(this.userCommitMsg)) {
+            return this.runCommitlint()
+        }
+
+        // 格式错误：启动交互式工具重新生成信息
+        this.showFormatComparison()
+        const czStatus = this.startCommitizen()
+
+        // 如果交互式工具执行失败（如用户取消），直接退出
+        if (czStatus !== 0) {
+            console.error('❌ 交互式提交被终止')
+            return 1
+        }
+
+        // 二次校验：验证交互式工具生成的信息
+        if (this.isStandardFormat(this.userCommitMsg)) {
+            return this.runCommitlint() // 走完整验证流程
+        } else {
+            console.error('❌ 交互式工具生成的信息仍不符合规范')
             return 1
         }
     }
 }
 
-// 执行验证并返回退出码
+// 执行验证并退出
 const validator = new CommitValidator()
 const exitCode = validator.validate()
 process.exit(exitCode)
