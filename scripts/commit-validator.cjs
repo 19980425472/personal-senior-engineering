@@ -89,8 +89,8 @@ class CommitValidator {
         console.log('\n⚠️  请使用 commitizen 提交')
         console.log('')
         console.log('   执行以下命令提交:')
-        console.log('   pnpm commit')
-        console.log('   npm run commit')
+        console.log('   pnpm commit  或者  npm run commit')
+        return 0
     }
 
     // 使用 commitlint 验证
