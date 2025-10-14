@@ -14,7 +14,6 @@
     "generate-module": "node scripts/generate/index.cjs",
     "prepare": "node .husky/install.mjs",
     "commit": "git-cz",
-    "cz": "cz",
     "lint:staged": "lint-staged"
   },
   "config": {
