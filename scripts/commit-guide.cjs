@@ -3,7 +3,6 @@
 const readline = require('readline')
 const { execSync } = require('child_process')
 
-// 简单配置
 const config = {
     types: [
         { value: 'feat', name: '✨ 新功能', emoji: '✨' },
@@ -15,10 +14,10 @@ const config = {
         { value: 'chore', name: '🔧 工具', emoji: '🔧' },
         { value: 'perf', name: '⚡ 性能', emoji: '⚡' }
     ],
-    scopes: ['root', 'backend', 'frontend', 'mobile', 'web', 'components', 'utils']
+    scopes: ['全局', '前端', '后端', '移动端', '组件', '工具']
 }
 
-class SimpleCommitGuide {
+class CommitGuide {
     constructor() {
         this.rl = readline.createInterface({
             input: process.stdin,
@@ -32,7 +31,6 @@ class SimpleCommitGuide {
         })
     }
 
-    // 选择类型
     async selectType() {
         console.log('\n🎯 选择提交类型:')
         config.types.forEach((type, i) => {
@@ -49,7 +47,6 @@ class SimpleCommitGuide {
         }
     }
 
-    // 选择范围
     async selectScope() {
         console.log('\n🔧 选择影响范围:')
         config.scopes.forEach((scope, i) => {
@@ -66,7 +63,6 @@ class SimpleCommitGuide {
         return ''
     }
 
-    // 输入描述
     async inputSubject() {
         console.log('\n📝 填写提交描述:')
         while (true) {
@@ -76,7 +72,6 @@ class SimpleCommitGuide {
         }
     }
 
-    // 确认提交
     async confirmCommit(type, scope, subject) {
         const scopeText = scope ? `(${scope})` : ''
         const message = `${type.value}${scopeText}: ${subject}`
@@ -88,25 +83,26 @@ class SimpleCommitGuide {
         return confirm.toLowerCase() !== 'n'
     }
 
-    // 执行提交
     executeCommit(type, scope, subject) {
         const scopeText = scope ? `(${scope})` : ''
         const message = `${type.value}${scopeText}: ${subject}`
 
         try {
+            console.log('\n🔄 执行提交中...')
             execSync(`git commit -m "${message}" --no-verify`, {
                 stdio: 'inherit'
             })
             console.log('\n✅ 提交成功！')
             return true
-        } catch {
-            console.log('\n❌ 提交失败')
+        } catch (error) {
+            console.log('\n❌ 提交失败:', error.message)
             return false
         }
     }
 
     async start() {
-        console.log('-----------------------------------------------------------')
+        console.log('🚀 Git 提交引导')
+        console.log('====================')
 
         try {
             const type = await this.selectType()
@@ -114,16 +110,28 @@ class SimpleCommitGuide {
             const subject = await this.inputSubject()
 
             if (await this.confirmCommit(type, scope, subject)) {
-                this.executeCommit(type, scope, subject)
+                const success = this.executeCommit(type, scope, subject)
+                return success ? 0 : 1
             } else {
                 console.log('\n❌ 已取消提交')
+                return 1
             }
         } catch (error) {
             console.log('💥 出错:', error.message)
+            return 1
         } finally {
             this.rl.close()
         }
     }
 }
 
-new SimpleCommitGuide().start()
+// 启动引导并返回退出码
+new CommitGuide()
+    .start()
+    .then((exitCode) => {
+        process.exit(exitCode)
+    })
+    .catch((error) => {
+        console.error('致命错误:', error)
+        process.exit(1)
+    })
