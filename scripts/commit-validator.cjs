@@ -1,28 +1,29 @@
 #!/usr/bin/env node
 
-const fs = require('fs')
-const { spawnSync } = require('child_process')
+const fs = require('fs');
+const { spawnSync } = require('child_process');
+const chalk = require('chalk');
 
 class CommitValidator {
     constructor() {
-        this.commitMsgFile = process.argv[2]
-        this.userCommitMsg = this.getUserCommitMessage()
-        this.standardConfig = this.loadStandardConfig()
+        this.commitMsgFile = process.argv[2];
+        this.userCommitMsg = this.getUserCommitMessage();
+        this.standardConfig = this.loadStandardConfig();
     }
 
     getUserCommitMessage() {
         try {
-            return fs.readFileSync(this.commitMsgFile, 'utf8').trim()
+            return fs.readFileSync(this.commitMsgFile, 'utf8').trim();
         } catch {
-            return ''
+            return '';
         }
     }
 
     loadStandardConfig() {
         try {
             // 从 commitlint.config.js 读取配置
-            delete require.cache[require.resolve('../commitlint.config.js')]
-            const config = require('../commitlint.config.js')
+            delete require.cache[require.resolve('../commitlint.config.js')];
+            const config = require('../commitlint.config.js');
 
             return {
                 types: config.prompt?.types?.map((t) => t.value) || [
@@ -37,89 +38,68 @@ class CommitValidator {
                 ],
                 typesConfig: config.prompt?.types || [],
                 scopes: config.prompt?.scopes || []
-            }
+            };
         } catch {
-            console.log('❌ 配置加载失败，使用默认配置')
+            console.log(chalk.red('❌ 配置加载失败，使用默认配置'));
             return {
                 types: ['feat', 'fix', 'docs', 'style', 'refactor', 'test', 'chore', 'perf'],
                 typesConfig: [],
                 scopes: []
-            }
+            };
         }
     }
 
     // 检查是否符合标准格式
     isStandardFormat(message) {
-        if (!message) return false
+        if (!message) return false;
 
-        const firstLine = message.split('\n')[0]
-        const typePattern = this.standardConfig.types.join('|')
-        const pattern = new RegExp(`^(${typePattern})(\\([a-zA-Z0-9\\-]+\\))?: .+`)
+        const firstLine = message.split('\n')[0];
+        const typePattern = this.standardConfig.types.join('|');
+        const pattern = new RegExp(`^(${typePattern})(\\([a-zA-Z0-9\\-]+\\))?: .+`);
 
-        return pattern.test(firstLine)
+        return pattern.test(firstLine);
     }
 
     // 显示格式对比
     showFormatComparison() {
-        const firstLine = this.userCommitMsg.split('\n')[0]
+        const firstLine = this.userCommitMsg.split('\n')[0];
 
-        console.log('\n📊 格式分析报告：')
+        console.log(chalk.blue('\n📊 格式分析报告：'));
         console.log(
-            '❌ 你的提交日志:',
-            this.userCommitMsg ? `"${firstLine} " 格式不符合标准` : '(空信息)'
-        )
-        console.log('')
-        console.log('✅ 标准日志格式如下: ')
+            chalk.red('❌ 你的提交日志:'),
+            this.userCommitMsg ? chalk.red(`"${firstLine}" 格式不符合标准`) : chalk.red('(空信息)')
+        );
+        console.log('');
+        console.log(chalk.green('✅ 标准日志格式如下: '));
         this.standardConfig.typesConfig.forEach((type) => {
-            console.log(`   ${type.name}`)
-        })
-        console.log('   feat(auth): 添加用户登录功能')
-        console.log('   fix: 修复页面崩溃问题')
-        console.log('   docs: 更新API文档')
-        console.log('   style: 更新样式文件')
-        console.log('   refactor: 重构代码')
-        console.log('   test: 添加测试用例')
-        console.log('   chore: 更新构建流程')
-        console.log('   perf: 优化性能')
-        console.log('────────────────────────────────────────')
+            console.log(`   ${type.name}`);
+        });
+        console.log(chalk.green('   feat(auth): 添加用户登录功能'));
+        console.log(chalk.green('   fix: 修复页面崩溃问题'));
+        console.log(chalk.green('   docs: 更新API文档'));
+        console.log(chalk.green('   style: 更新样式文件'));
+        console.log(chalk.green('   refactor: 重构代码'));
+        console.log(chalk.green('   test: 添加测试用例'));
+        console.log(chalk.green('   chore: 更新构建流程'));
+        console.log(chalk.green('   perf: 优化性能'));
+        console.log(chalk.blue('────────────────────────────────────────'));
     }
 
-    //  这个函数里面需要告诉用户 去执行性命令 pnpm commit  或者 npm run commit  手动提交
     startCommitizen() {
-        console.log('\n⚠️  请使用 commitizen方式 提交')
-        console.log('   执行以下命令提交:')
-        console.log('   pnpm commit  或者  npm run commit')
-        return 0
-    }
-
-    // 使用 commitlint 验证
-    runCommitlint() {
-        const result = spawnSync('npx', ['commitlint', '--edit', this.commitMsgFile], {
-            stdio: 'inherit',
-            shell: true
-        })
-
-        return result.status
+        console.log(chalk.blue('\n🚀 现在启动交互式提交引导...'));
     }
 
     validate() {
-        console.log('🔍 提交信息验证')
-        console.log('========================================')
-
-        // 如果符合标准格式，用 commitlint 验证
-        if (this.isStandardFormat(this.userCommitMsg)) {
-            console.log('✅ 格式符合标准，进行详细验证...')
-            return this.runCommitlint()
+        if (!this.isStandardFormat(this.userCommitMsg)) {
+            this.showFormatComparison();
+            this.startCommitizen();
+            return 1; // 返回错误状态码
         }
-        // 如果不符合标准格式，自动启动 git-cz
-        else {
-            this.showFormatComparison()
-            return this.startCommitizen()
-        }
+        return 0; // 返回成功状态码
     }
 }
 
 // 执行验证
-const validator = new CommitValidator()
-const exitCode = validator.validate()
-process.exit(exitCode)
+const validator = new CommitValidator();
+const exitCode = validator.validate();
+process.exit(exitCode);
