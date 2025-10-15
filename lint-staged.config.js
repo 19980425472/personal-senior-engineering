@@ -43,7 +43,7 @@ export default {
     '*.vue': [
         // checkVueFilename, // 自定义Vue文件名校验
         // ESLint修复（Vue模板+脚本）
-        'eslint --fix --plugin vue ',
+        'eslint --fix --plugin vue',
         // Prettier格式化（覆盖template/style）
         'prettier --write'
         // Vue模板类型检查（vue-tsc）

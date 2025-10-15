@@ -212,9 +212,8 @@ export default defineConfig([
         },
 
         rules: {
-            // checkVueFilename,
             // 开发环境允许使用console，生产环境禁止使用console
-            'no-console': process.env.NODE_ENV === 'production' ? 'error' : 'warn',
+            'no-console': 'error',
             'vue/multi-word-component-names': [
                 'error',
                 {

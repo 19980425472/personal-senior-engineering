@@ -13,7 +13,14 @@ class CommitValidator {
 
     getUserCommitMessage() {
         try {
-            return fs.readFileSync(this.commitMsgFile, 'utf8').trim()
+            // 兼容插件提交和 pre-push 调用
+            if (process.argv[2]) {
+                return fs.readFileSync(process.argv[2], 'utf8').trim()
+            } else if (!process.stdin.isTTY) {
+                return require('fs').readFileSync(0, 'utf8').trim()
+            } else {
+                return ''
+            }
         } catch {
             return ''
         }
@@ -64,7 +71,7 @@ class CommitValidator {
     showFormatComparison() {
         const firstLine = this.userCommitMsg.split('\n')[0]
 
-        console.log(chalk.blue('\n📊 格式分析报告：'))
+        console.log(chalk.blue('\n📊 提交日志格式分析报告：'))
         console.log(
             chalk.red('❌ 你的提交日志:'),
             this.userCommitMsg ? chalk.red(`"${firstLine}" 格式不符合标准`) : chalk.red('(空信息)')

@@ -3,6 +3,8 @@
 const { execSync } = require('child_process')
 const path = require('path')
 const fs = require('fs')
+const chalk = require('chalk').default
+chalk.level = 1 // 强制启用基础颜色支持
 
 // 配置项
 const CONFIG = {
@@ -129,7 +131,7 @@ function validateCommitMessages(currentBranch) {
         const shortHash = commit.substring(0, 8)
         const previewMsg = commitMsg.length > 50 ? `${commitMsg.substring(0, 50)}...` : commitMsg
 
-        log(`检查提交 ${shortHash}: ${previewMsg}`)
+        log(`你的提交日志信息是 : ${previewMsg} ,提交的hash值是: ${shortHash}`)
 
         try {
             // 使用标准输入传递提交信息，更安全
@@ -138,7 +140,8 @@ function validateCommitMessages(currentBranch) {
                 input: commitMsg
             })
         } catch {
-            throw new Error(`提交 ${shortHash} 的信息不符合规范`)
+            // 获取的这里的错误信息
+            throw new Error(`${commit}`)
         }
     }
 
@@ -175,8 +178,20 @@ async function main() {
         log('所有检测通过，允许推送', 'success')
         process.exit(0)
     } catch (error) {
-        log(`检测失败: ${error.message}`, 'error')
-        log('请修复上述问题后重新推送', 'error')
+        log(`失败原因: 您hash为 ${error.message} 的提交日志 不符合提交规范`, 'error')
+        console.log('\n🚫 如果你有历史提交远程没有成功的，可以执行以下命令尝试修复:')
+
+        console.log(
+            chalk.blue('2.开始交互式 rebase，从这个提交的前一个开始:'),
+            chalk.green(`git rebase -i ${error.message}^`)
+        )
+        console.log(
+            chalk.blue('3.现在 Git 会停在 有错误的 这个提交处，修改提交信息:'),
+            chalk.green(`git commit --amend -m "正确的提交信息"`)
+        )
+        console.log(chalk.blue('4.继续完成 rebase:'), chalk.green(`git rebase --continue`))
+        console.log(chalk.blue('5.现在可以正常推送了:'), chalk.green(`git push`))
+
         process.exit(1)
     }
 }
