@@ -180,17 +180,9 @@ async function main() {
     } catch (error) {
         log(`失败原因: 您hash为 ${error.message} 的提交日志 不符合提交规范`, 'error')
         console.log('\n🚫 如果你有历史提交远程没有成功的，可以执行以下命令尝试修复:')
-
-        console.log(
-            chalk.blue('2.开始交互式 rebase，从这个提交的前一个开始:'),
-            chalk.green(`git rebase -i ${error.message}^`)
-        )
-        console.log(
-            chalk.blue('3.现在 Git 会停在 有错误的 这个提交处，修改提交信息:'),
-            chalk.green(`git commit --amend -m "正确的提交信息"`)
-        )
-        console.log(chalk.blue('4.继续完成 rebase:'), chalk.green(`git rebase --continue`))
-        console.log(chalk.blue('5.现在可以正常推送了:'), chalk.green(`git push`))
+        console.log(`   git reset ${error.message} --soft`)
+        console.log(`   git commit -m "写入正确的格式"`)
+        console.log('   git push')
 
         process.exit(1)
     }
