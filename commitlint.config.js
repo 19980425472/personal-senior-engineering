@@ -36,7 +36,10 @@ export default {
             { value: 'feat', name: '✅ 新功能：新增功能' },
             { value: 'fix', name: '🔧 修复：修复缺陷' },
             { value: 'docs', name: '📝 文档：文档变更' },
-            { value: 'refactor', name: '♻️ 重构：代码重构（不新增功能也不修复BUG）' },
+            {
+                value: 'refactor',
+                name: '♻️ 重构：代码重构（不新增功能也不修复BUG）'
+            },
             { value: 'perf', name: '🚀 性能：性能优化' },
             { value: 'test', name: '🧪 测试：添加测试' },
             { value: 'chore', name: '⚙️ 工具：更改构建流程或辅助工具' },
@@ -45,7 +48,10 @@ export default {
                 value: 'build',
                 name: '📦 构建：构建流程、外部依赖变更（如升级npm包、修改webpack配置等）'
             },
-            { value: 'style', name: '🎨 样式：格式调整（不影响功能，例如空格、分号等）' }
+            {
+                value: 'style',
+                name: '🎨 样式：格式调整（不影响功能，例如空格、分号等）'
+            }
         ],
         scopes: ['root', 'backend', 'frontend', 'mobile', 'web', 'components', 'utils'],
         allowCustomScopes: true,

@@ -261,9 +261,7 @@ export function dynamicAliasPlugin(options: DynamicAliasPluginOptions): Plugin {
             writeAliasesToTsconfig(baseAlias)
             console.log('他妈的~~~', baseAlias)
 
-            console.log(
-                `[dynamicAlias] 目录${action}: ${path.relative(projectRoot, dirPath)}，别名已更新`
-            )
+            console.log(`[dynamicAlias] 目录${action}: ${path.relative(projectRoot, dirPath)}，别名已更新`)
         } catch (err) {
             console.error(`[dynamicAlias] 目录${action}后更新别名失败:`, err)
         }
@@ -520,10 +518,7 @@ async function processDirectory(
     }
 }
 
-async function readDirSafe(
-    dir: string,
-    logger: ReturnType<typeof createLogger>
-): Promise<string[]> {
+async function readDirSafe(dir: string, logger: ReturnType<typeof createLogger>): Promise<string[]> {
     try {
         const entries = await fsPromises.readdir(dir, { withFileTypes: true })
         return entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name)
@@ -598,9 +593,7 @@ export async function writeAliasesToTsconfig(
         aliases.forEach((alias) => {
             if (typeof alias.find !== 'string') return
             const relativePath = path.relative(targetAbsPath, alias.replacement).replace(/\\/g, '/') // 统一路径分隔符
-            newPaths[`${alias.find}/*`] = [
-                `${targetDir}/${relativePath}${relativePath ? '/*' : ''}`
-            ]
+            newPaths[`${alias.find}/*`] = [`${targetDir}/${relativePath}${relativePath ? '/*' : ''}`]
         })
 
         // 4. 直接修改对象属性（核心：对象操作）

@@ -1,0 +1,2 @@
+# 调用pre-push.js脚本执行
+node .husky/pre-push.js $1

@@ -59,14 +59,7 @@ async function generateModule() {
 
         // React 目录结构
         if (framework.toLowerCase() === 'react') {
-            const reactDirs = [
-                'assets/images',
-                'assets/styles',
-                'components',
-                'hooks',
-                'pages',
-                'utils'
-            ]
+            const reactDirs = ['assets/images', 'assets/styles', 'components', 'hooks', 'pages', 'utils']
             for (const dir of reactDirs) {
                 const fullPath = path.join(modulePath, dir)
                 fs.mkdirSync(fullPath, { recursive: true })

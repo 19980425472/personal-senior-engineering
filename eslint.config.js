@@ -185,7 +185,9 @@ export default defineConfig([
             'spaced-comment': [
                 2,
                 'always',
-                { markers: ['global', 'globals', 'eslint', 'eslint-disable', '*package', '!', ','] }
+                {
+                    markers: ['global', 'globals', 'eslint', 'eslint-disable', '*package', '!', ',']
+                }
             ], // 注释///*后必须有空格（如// 注释而非//注释）
             'template-curly-spacing': [2, 'never'], // 模板字符串${}内无空格（如`${a}`而非`${ a }`）
             'use-isnan': 2, // 禁止用a==NaN，必须用isNaN(a)（NaN !== NaN）
