@@ -7,7 +7,6 @@
 
 <script setup lang="ts">
 import Index from '@modules/mitt/index.vue'
-
 </script>
 
 <style lang="scss" scoped>
