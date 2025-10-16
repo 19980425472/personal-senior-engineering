@@ -113,7 +113,8 @@ jobs:
                   echo "🚀 开始自动部署到 main 环境..."
                   echo "分支: ${{ github.ref_name }}"
                   echo "Commit: ${{ github.sha }}"
-                  echo "版本: v$(node -p "require('./package.json').version")"
+                  VERSION=$(node -p "require('./package.json').version")
+                  echo "版本: v$VERSION"
                   echo "触发方式: 自动推送"
 
                   # main 环境部署脚本
@@ -123,8 +124,9 @@ jobs:
             - name: 📢 自动部署通知
               run: |
                   echo "📢 发送自动部署通知..."
+                  VERSION=$(node -p "require('./package.json').version")
                   echo "🎉 main 分支自动部署成功！"
-                  echo "🏷️ 版本: v$(node -p "require('./package.json').version")"
+                  echo "🏷️ 版本: v$VERSION"
                   echo "🔗 Commit: ${{ github.sha }}"
 
     # 手动部署 - production 环境
@@ -144,7 +146,7 @@ jobs:
               run: |
                   echo "👑 生产环境手动部署"
                   echo "👤 触发用户: ${{ github.actor }}"
-                  echo "🏷️ 指定版本: ${{ github.event.inputs.version || '使用最新版本' }}"
+                  echo "🏷️ 指定版本: ${{ github.event.inputs.version || '未指定，使用默认版本' }}"
                   echo "🕐 触发时间: $(date)"
 
             - name: 📥 下载 CI 构建产物
@@ -157,7 +159,13 @@ jobs:
                   echo "📋 生产环境部署前检查清单:"
                   echo "✅ 部署确认: ${{ github.event.inputs.confirm }}"
                   echo "👤 部署负责人: ${{ github.actor }}"
-                  echo "🏷️ 部署版本: ${{ github.event.inputs.version || 'v'$(node -p "require('./package.json').version") }}"
+                  VERSION=$(node -p "require('./package.json').version")
+                  DEPLOY_VERSION="${{ github.event.inputs.version }}"
+                  if [ -z "$DEPLOY_VERSION" ]; then
+                    echo "🏷️ 部署版本: v$VERSION (默认)"
+                  else
+                    echo "🏷️ 部署版本: $DEPLOY_VERSION (指定)"
+                  fi
                   echo "🔗 源代码 Commit: ${{ github.sha }}"
                   echo "📊 CI 状态: 已通过"
 
@@ -168,7 +176,13 @@ jobs:
                   echo "👑 生产环境部署信息"
                   echo "========================================"
                   echo "👤 部署人: ${{ github.actor }}"
-                  echo "🏷️ 版本: ${{ github.event.inputs.version || 'v'$(node -p "require('./package.json').version") }}"
+                  VERSION=$(node -p "require('./package.json').version")
+                  DEPLOY_VERSION="${{ github.event.inputs.version }}"
+                  if [ -z "$DEPLOY_VERSION" ]; then
+                    echo "🏷️ 版本: v$VERSION"
+                  else
+                    echo "🏷️ 版本: $DEPLOY_VERSION"
+                  fi
                   echo "🔗 Commit: ${{ github.sha }}"
                   echo "🕐 部署时间: $(date)"
                   echo "触发方式: 手动确认"
@@ -194,7 +208,14 @@ jobs:
             - name: 📢 生产部署通知
               run: |
                   echo "📢 发送生产部署通知..."
+                  VERSION=$(node -p "require('./package.json').version")
+                  DEPLOY_VERSION="${{ github.event.inputs.version }}"
+                  if [ -z "$DEPLOY_VERSION" ]; then
+                    ACTUAL_VERSION="v$VERSION"
+                  else
+                    ACTUAL_VERSION="$DEPLOY_VERSION"
+                  fi
                   echo "🎉 生产环境部署成功完成！"
                   echo "👤 部署人: ${{ github.actor }}"
-                  echo "🏷️ 版本: ${{ github.event.inputs.version || 'v'$(node -p "require('./package.json').version") }}"
+                  echo "🏷️ 版本: $ACTUAL_VERSION"
                   echo "🔗 查看详情: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
