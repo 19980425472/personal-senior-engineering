@@ -1,7 +1,9 @@
-name: Main Branch CI/CD
+name: Vue3 CI/CD Pipeline
 
 on:
     push:
+        branches: [main, develop, feature/*]
+    pull_request:
         branches: [main]
     workflow_dispatch:
 
@@ -10,10 +12,65 @@ env:
     PNPM_VERSION: '10'
 
 jobs:
-    # CI 阶段 - 代码质量和构建
-    ci:
-        name: 🛡️ 代码质量和构建
+    # ========== CI 阶段 ==========
+    code-quality:
+        name: 🛡️ 代码质量检查
         runs-on: ubuntu-latest
+        steps:
+            - name: 📥 检出代码
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: 📦 安装 pnpm
+              uses: pnpm/action-setup@v2
+              with:
+                  version: ${{ env.PNPM_VERSION }}
+
+            - name: 🟢 设置 Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: 'pnpm'
+
+            - name: 📦 安装依赖
+              run: pnpm install --frozen-lockfile
+
+            - name: 🔍 配置文件验证
+              run: |
+                  echo "🔍 验证配置文件..."
+                  required_files=("package.json" "pnpm-lock.yaml" "vite.config.ts" "tsconfig.json")
+                  for file in "${required_files[@]}"; do
+                    if [ ! -f "$file" ]; then
+                      echo "❌ 缺少文件: $file"
+                      exit 1
+                    fi
+                  done
+                  echo "✅ 配置文件验证通过"
+
+            - name: 📝 提交信息检查
+              if: github.event_name == 'push'
+              run: |
+                  echo "📝 检查提交信息..."
+                  npx commitlint --from HEAD~1 --to HEAD --verbose
+
+            - name: 🔍 ESLint 检查
+              run: npx eslint . --ext .vue,.ts,.js --fix
+
+            - name: 🎨 Prettier 格式化
+              run: npx prettier --write "src/**/*.{vue,ts,js}"
+
+            - name: 📐 TypeScript 类型检查
+              run: npx vue-tsc --noEmit
+
+            - name: 🔒 安全扫描
+              if: github.ref == 'refs/heads/main'
+              run: npx audit --audit-level moderate
+
+    build:
+        name: 🏗️ 项目构建
+        runs-on: ubuntu-latest
+        needs: code-quality
         steps:
             - name: 📥 检出代码
               uses: actions/checkout@v4
@@ -32,158 +89,111 @@ jobs:
             - name: 📦 安装依赖
               run: pnpm install --frozen-lockfile
 
-            - name: 🔍 代码检查
-              run: |
-                  echo "🔍 运行代码质量检查..."
-                  npx eslint . --ext .vue,.ts,.js
-                  npx prettier --check "src/**/*.{vue,ts,js}"
-                  npx vue-tsc --noEmit
-                  echo "✅ 代码检查通过"
-
-            # - name: 🔒 安全扫描
-            #   run: |
-            #     echo "🔒 运行安全扫描..."
-            #     npx audit --audit-level moderate
-            #     echo "✅ 安全扫描通过"
-
             - name: 🏗️ 构建项目
               run: |
-                  echo "🏗️ 开始构建项目..."
-                  npx vite build
-                  echo "✅ 项目构建完成"
+                  echo "🏗️ 开始构建..."
+                  if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+                    npx vite build --base=/personal-senior-engineering/
+                  else
+                    npx vite build
+                  fi
+                  echo "✅ 构建完成"
 
-            - name: 📦 验证构建产物
+            - name: 📋 验证构建产物
               run: |
-                  echo "📦 验证构建产物..."
-                  if [ ! -d "dist" ] || [ -z "$(ls -A dist)" ]; then
-                    echo "❌ 构建产物无效"
-                    echo "当前目录内容:"
-                    ls -la
+                  echo "📋 检查构建产物..."
+                  if [ ! -f "dist/index.html" ]; then
+                    echo "❌ 缺少 index.html"
                     exit 1
                   fi
-                  echo "📊 构建产物大小: $(du -sh dist | cut -f1)"
-                  echo "📁 构建产物内容:"
-                  ls -la dist/
+                  echo "📊 产物大小: $(du -sh dist | cut -f1)"
+                  echo "📁 文件数量: $(find dist -type f | wc -l)"
                   echo "✅ 构建产物验证通过"
 
             - name: 📤 上传构建产物
               uses: actions/upload-artifact@v4
               with:
-                  name: dist-artifact
+                  name: dist-build
                   path: dist/
                   retention-days: 7
-                  if-no-files-found: error
 
-    # CD 阶段 - main 分支部署
-    deploy-main:
-        name: 🚀 部署到生产环境
+    # ========== CD 阶段 ==========
+    deploy-preview:
+        name: 🌐 预览部署
         runs-on: ubuntu-latest
-        needs: ci
+        needs: build
+        if: github.ref != 'refs/heads/main'
         environment:
-            name: production
-        permissions:
-            contents: write # 添加写入权限
+            name: preview
+            url: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/preview-${{ github.ref_name }}
 
         steps:
-            - name: 📥 检出代码（用于版本信息）
-              uses: actions/checkout@v4
+            - name: 📥 下载构建产物
+              uses: actions/download-artifact@v4
               with:
-                  token: ${{ secrets.GITHUB_TOKEN }} # 明确指定 token
+                  name: dist-build
+                  path: ./preview-dist
+
+            - name: 📊 预览信息
+              run: |
+                  echo "🌐 预览部署信息:"
+                  echo "分支: ${{ github.ref_name }}"
+                  echo "Commit: ${{ github.sha }}"
+                  echo "产物大小: $(du -sh preview-dist | cut -f1)"
+                  echo "📝 预览部署完成（实际部署需要配置具体服务）"
+
+    deploy-production:
+        name: 🚀 生产部署
+        runs-on: ubuntu-latest
+        needs: build
+        if: github.ref == 'refs/heads/main'
+        permissions:
+            contents: write
+        environment:
+            name: production
+            url: https://19980425472.github.io/personal-senior-engineering/
+
+        steps:
+            - name: 📥 检出代码
+              uses: actions/checkout@v4
 
             - name: 📥 下载构建产物
               uses: actions/download-artifact@v4
               with:
-                  name: dist-artifact
-                  path: ./downloaded-dist
-
-            - name: 🔍 检查下载的文件
-              run: |
-                  echo "🔍 检查下载的构建产物..."
-                  echo "当前目录内容:"
-                  ls -la
-                  echo "下载目录内容:"
-                  ls -la downloaded-dist/
-
-                  # 将构建产物移动到正确位置
-                  if [ -d "downloaded-dist" ] && [ -n "$(ls -A downloaded-dist)" ]; then
-                    echo "📦 移动构建产物到 dist 目录..."
-                    rm -rf dist 2>/dev/null || true
-                    mv downloaded-dist dist
-                    echo "✅ 构建产物移动完成"
-                  else
-                    echo "❌ 下载的构建产物无效"
-                    exit 1
-                  fi
-
-            - name: 🔍 部署前验证
-              run: |
-                  echo "🔍 部署前验证..."
-                  # 验证 package.json 存在
-                  if [ ! -f "package.json" ]; then
-                    echo "❌ package.json 不存在"
-                    exit 1
-                  fi
-
-                  # 验证构建产物
-                  if [ ! -d "dist" ] || [ -z "$(ls -A dist)" ]; then
-                    echo "❌ 构建产物无效"
-                    echo "当前目录内容:"
-                    ls -la
-                    echo "dist 目录内容:"
-                    ls -la dist/ 2>/dev/null || echo "dist 目录不存在"
-                    exit 1
-                  fi
-
-                  echo "✅ 部署前验证通过"
-                  echo "📊 构建产物详情:"
-                  echo "大小: $(du -sh dist | cut -f1)"
-                  echo "文件数量: $(find dist -type f | wc -l)"
+                  name: dist-build
+                  path: ./production-dist
 
             - name: 🏷️ 创建版本标签
               run: |
                   echo "🏷️ 创建版本标签..."
-                  # 从 package.json 读取版本
                   VERSION=$(node -p "require('./package.json').version")
-                  echo "检测到版本: $VERSION"
-
-                  # 配置 git（使用正确的认证）
                   git config --global user.name "github-actions[bot]"
                   git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-                  # 创建并推送标签
-                  git tag -a "v$VERSION" -m "Production Release v$VERSION - ${{ github.sha }}"
+                  git tag -a "v$VERSION" -m "Release v$VERSION - ${{ github.sha }}"
                   git push origin "v$VERSION"
                   echo "✅ 版本标签 v$VERSION 创建完成"
 
-            - name: 🚀 执行部署
+            - name: 🚀 部署到 GitHub Pages
+              uses: peaceiris/actions-gh-pages@v3
+              with:
+                  github_token: ${{ secrets.GITHUB_TOKEN }}
+                  publish_dir: ./production-dist
+                  publish_branch: gh-pages
+                  force_orphan: true
+                  user_name: 'github-actions[bot]'
+                  user_email: 'github-actions[bot]@users.noreply.github.com'
+
+            - name: 🎉 部署成功通知
               run: |
-                  echo "🚀 开始部署到生产环境..."
-                  echo "========================================"
-                  echo "🎯 部署信息"
-                  echo "========================================"
-                  VERSION=$(node -p "require('./package.json').version")
-                  echo "版本: v$VERSION"
-                  echo "Commit: ${{ github.sha }}"
-                  echo "触发方式: ${{ github.event_name }}"
-                  echo "时间: $(date)"
-                  echo "构建产物大小: $(du -sh dist | cut -f1)"
-                  echo "构建产物文件: $(find dist -type f | wc -l) 个文件"
-                  echo "========================================"
-
-                  # 显示部分构建产物内容
-                  echo "📁 主要构建文件:"
-                  find dist -name "*.html" -o -name "*.js" | head -8 | while read file; do
-                    echo "  📄 $file"
-                  done
-
-                  echo "✅ 部署准备完成"
-                  echo "📝 请在此处添加实际部署脚本"
-
-            - name: 📢 部署完成通知
-              run: |
-                  echo "📢 部署完成通知"
-                  VERSION=$(node -p "require('./package.json').version")
-                  echo "🎉 生产环境部署准备完成！"
-                  echo "🏷️ 版本: v$VERSION"
+                  echo " "
+                  echo "🎉 ========================================="
+                  echo "🎉 CI/CD 流程完成!"
+                  echo "🎉 ========================================="
+                  echo "🌐 生产环境: https://19980425472.github.io/personal-senior-engineering/"
+                  echo "📱 访问地址: https://19980425472.github.io/personal-senior-engineering/"
+                  echo "🏷️ 版本: v$(node -p "require('./package.json').version")"
+                  echo "🕐 部署时间: $(date)"
                   echo "🔗 Commit: ${{ github.sha }}"
-                  echo "🕐 时间: $(date)"
+                  echo "📊 构建产物: $(du -sh production-dist | cut -f1)"
+                  echo "🎉 ========================================="
+                  echo " "
