@@ -3,6 +3,7 @@
 const chalk = require('chalk').default
 chalk.level = 1 // 强制启用基础颜色支持
 const fs = require('fs')
+const { execSync } = require('child_process')
 
 class CommitValidator {
     constructor() {
@@ -92,6 +93,55 @@ class CommitValidator {
         console.log(chalk.blue('────────────────────────────────────────'))
     }
 
+    // 新增方法：添加作者信息到提交消息
+    addAuthorToCommitMessage() {
+        try {
+            if (!this.commitMsgFile) {
+                console.log(chalk.yellow('⚠️  无法获取提交消息文件路径'))
+                return
+            }
+
+            // 重新读取文件内容，确保获取最新内容
+            const currentMessage = fs.readFileSync(this.commitMsgFile, 'utf8').trim()
+
+            if (!currentMessage) {
+                console.log(chalk.yellow('⚠️  提交消息为空'))
+                return
+            }
+
+            // 动态检查是否已经包含作者信息（匹配任意用户名）
+            const hasAuthor = currentMessage.match(/-\s*[\u4e00-\u9fa5a-zA-Z0-9_\-\.]+$/)
+            const hasSkipFlag = currentMessage.includes('[skip-author]')
+
+            if (hasAuthor) {
+                console.log(chalk.blue(`ℹ️  提交消息已包含作者信息: ${hasAuthor[0]}`))
+                return
+            }
+
+            if (hasSkipFlag) {
+                console.log(chalk.blue('ℹ️  跳过作者信息添加'))
+                return
+            }
+
+            // 获取git用户信息
+            const author = execSync('git config user.name', { encoding: 'utf8' }).trim()
+
+            if (!author) {
+                console.log(
+                    chalk.yellow('⚠️  无法获取git用户信息，请配置: git config user.name "你的姓名"')
+                )
+                return
+            }
+
+            // 添加作者信息到提交消息
+            const newMessage = `${currentMessage} - ${author}`
+            fs.writeFileSync(this.commitMsgFile, newMessage)
+            console.log(chalk.green(`✅ 已自动添加作者: ${author}`))
+        } catch (error) {
+            console.log(chalk.yellow('⚠️  自动添加作者失败:', error.message))
+        }
+    }
+
     startCommitizen() {
         console.log(chalk.blue('\n🚀 现在启动交互式提交引导...'))
         console.log('\n⚠️  请使用 commitizen方式 提交')
@@ -104,11 +154,17 @@ class CommitValidator {
     }
 
     validate() {
+        // 先进行格式验证
         if (!this.isStandardFormat(this.userCommitMsg)) {
             this.showFormatComparison()
             this.startCommitizen()
             return 1 // 返回错误状态码
         }
+
+        // 验证通过后添加作者信息
+        console.log(chalk.green('✅ 提交格式验证通过'))
+        this.addAuthorToCommitMessage()
+
         return 0 // 返回成功状态码
     }
 }

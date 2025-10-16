@@ -180,9 +180,76 @@ async function main() {
     } catch (error) {
         log(`失败原因: 您hash为 ${error.message} 的提交日志 不符合提交规范`, 'error')
         console.log('\n🚫 如果你有历史提交远程没有成功的，可以执行以下命令尝试修复:')
-        console.log(`   git reset ${error.message} --soft`)
-        console.log(`   git commit -m "写入正确的格式"`)
-        console.log('   git push')
+        console.log(chalk.yellow('注意：以防止处理失败，建议先物理备份代码\n'))
+
+        // 步骤1：终止所有未完成的Git操作（确保环境干净）
+        console.log(chalk.green('步骤 1：终止所有未完成的Git流程（如rebase/merge）'))
+        console.log('  ' + chalk.cyan('git rebase --abort'))
+        console.log('  ' + chalk.cyan('git merge --abort'))
+        console.log('  ' + chalk.yellow('💡 作用：') + '清除中间状态，避免影响后续操作')
+        console.log('')
+
+        // 步骤2：备份未提交成功的代码（关键：防止重置时丢失）
+        console.log(chalk.green('步骤 2：备份所有未提交成功的代码（包括未push的修改）'))
+        console.log('  ' + chalk.cyan('git stash save "备份：未提交成功的代码"'))
+        console.log(
+            '  ' +
+                chalk.yellow('📌 重点：') +
+                '这一步会把所有未提交的代码（包括工作区和暂存区）存入临时存储，确保后续操作不丢失'
+        )
+        console.log(
+            '  ' +
+                chalk.yellow('✅ 验证：') +
+                '执行 ' +
+                chalk.cyan('git stash list') +
+                ' 能看到刚刚创建的备份记录'
+        )
+        console.log('')
+
+        // 步骤3：拉取远程最新状态（同步基准）
+        console.log(chalk.green('步骤 3：获取远程最新代码信息'))
+        console.log('  ' + chalk.cyan('git fetch origin'))
+        console.log('  ' + chalk.yellow('💡 作用：') + '确保本地知晓远程最新状态，为同步做准备')
+        console.log('')
+
+        // 步骤4：清空本地未推送的提交（仅清除历史，不影响备份）
+        console.log(chalk.green('步骤 4：清空本地未推送的错误提交，同步远程分支'))
+        console.log('  ' + chalk.cyan('git reset --hard origin/你的远程分支名')) // 替换main为你的远程分支名
+        console.log('  ' + '删除所有未推送的提交历史，但备份的代码在stash中是安全的')
+        console.log(
+            '  ' +
+                chalk.yellow('✅ 验证：') +
+                '执行 ' +
+                chalk.cyan('git log') +
+                ' 应与远程仓库最新提交完全一致'
+        )
+        console.log('')
+
+        // 步骤5：将备份的未提交代码恢复到工作区（核心需求）
+        console.log(chalk.green('步骤 5：恢复未提交成功的代码到工作区'))
+        console.log('  ' + chalk.cyan('git stash pop'))
+        console.log('  ' + '把之前未提交成功的代码会回到工作区，可重新编辑或提交')
+        console.log(
+            '  ' +
+                chalk.yellow('🔧 冲突处理：') +
+                '若提示冲突，打开冲突文件，保留你的代码，删除 <<< === >>> 标记后执行 ' +
+                chalk.cyan('git add .')
+        )
+        console.log(
+            '  ' +
+                chalk.yellow('✅ 验证：') +
+                '执行 ' +
+                chalk.cyan('git status') +
+                ' 能看到恢复的代码（处于未暂存状态）'
+        )
+        console.log('')
+
+        // 步骤6：重新提交恢复的代码（正常流程）
+        console.log(chalk.green('步骤 6：重新提交代码'))
+        console.log('  ' + chalk.cyan('git add 恢复的代码文件路径')) // 暂存需要提交的代码
+        console.log('  ' + chalk.cyan('pnpm commit 或 npm run commit')) // 用规范工具生成提交日志
+        console.log('  ' + chalk.cyan('git push origin main')) // 推送（替换main为你的远程分支名）
+        console.log('')
 
         process.exit(1)
     }
