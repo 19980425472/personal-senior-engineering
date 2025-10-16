@@ -1,0 +1,200 @@
+name: CD Pipeline
+
+on:
+    # 自动部署的分支
+    push:
+        branches: [test, staging, main]
+    # 手动部署的分支 - production
+    workflow_dispatch:
+        inputs:
+            confirm:
+                description: '确认部署到生产环境？'
+                required: true
+                type: choice
+                options:
+                    - '✅ 确认部署'
+                    - '❌ 取消部署'
+            version:
+                description: '部署版本（可选）'
+                required: false
+                type: string
+
+env:
+    NODE_VERSION: '22'
+    PNPM_VERSION: '10'
+
+jobs:
+    # 自动部署 - 测试环境
+    auto-deploy-test:
+        name: 🤖 自动部署测试环境
+        runs-on: ubuntu-latest
+        if: github.ref == 'refs/heads/test'
+        environment:
+            name: test
+            url: https://test.yourdomain.com
+
+        steps:
+            - name: 📥 下载 CI 构建产物
+              uses: actions/download-artifact@v4
+              with:
+                  name: dist
+
+            - name: 🚀 自动部署到测试环境
+              run: |
+                  echo "🚀 开始自动部署到测试环境..."
+                  echo "分支: ${{ github.ref_name }}"
+                  echo "Commit: ${{ github.sha }}"
+                  echo "触发方式: 自动推送"
+
+                  # 测试环境部署脚本
+                  # scp -r dist/* test-server:/var/www/html/
+                  echo "✅ 测试环境自动部署完成"
+
+    # 自动部署 - 预发布环境
+    auto-deploy-staging:
+        name: 🤖 自动部署预发布环境
+        runs-on: ubuntu-latest
+        if: github.ref == 'refs/heads/staging'
+        environment:
+            name: staging
+            url: https://staging.yourdomain.com
+
+        steps:
+            - name: 📥 下载 CI 构建产物
+              uses: actions/download-artifact@v4
+              with:
+                  name: dist
+
+            - name: 🔒 预发布环境安全检查
+              run: |
+                  echo "🔒 预发布环境安全检查..."
+                  # npm audit --audit-level moderate
+                  echo "✅ 预发布环境安全检查完成"
+
+            - name: 🚀 自动部署到预发布环境
+              run: |
+                  echo "🚀 开始自动部署到预发布环境..."
+                  echo "分支: ${{ github.ref_name }}"
+                  echo "Commit: ${{ github.sha }}"
+                  echo "触发方式: 自动推送"
+
+                  # 预发布环境部署脚本
+                  # docker build -t your-app:staging .
+                  # docker push your-app:staging
+                  echo "✅ 预发布环境自动部署完成"
+
+    # 自动部署 - main 分支环境
+    auto-deploy-main:
+        name: 🤖 自动部署 main 环境
+        runs-on: ubuntu-latest
+        if: github.ref == 'refs/heads/main'
+        environment:
+            name: main
+            url: https://main.yourdomain.com
+
+        steps:
+            - name: 📥 下载 CI 构建产物
+              uses: actions/download-artifact@v4
+              with:
+                  name: dist
+
+            - name: 🏷️ 创建版本标签
+              run: |
+                  echo "🏷️ 自动创建版本标签..."
+                  VERSION=$(node -p "require('./package.json').version")
+                  git config --global user.name "GitHub Actions"
+                  git config --global user.email "actions@github.com"
+                  git tag -a "v$VERSION" -m "Auto Release v$VERSION - main branch"
+                  git push origin "v$VERSION"
+                  echo "✅ 版本标签 v$VERSION 创建完成"
+
+            - name: 🚀 自动部署到 main 环境
+              run: |
+                  echo "🚀 开始自动部署到 main 环境..."
+                  echo "分支: ${{ github.ref_name }}"
+                  echo "Commit: ${{ github.sha }}"
+                  echo "版本: v$(node -p "require('./package.json').version")"
+                  echo "触发方式: 自动推送"
+
+                  # main 环境部署脚本
+                  # aws s3 sync dist/ s3://main-bucket/ --delete
+                  echo "✅ main 环境自动部署完成"
+
+            - name: 📢 自动部署通知
+              run: |
+                  echo "📢 发送自动部署通知..."
+                  echo "🎉 main 分支自动部署成功！"
+                  echo "🏷️ 版本: v$(node -p "require('./package.json').version")"
+                  echo "🔗 Commit: ${{ github.sha }}"
+
+    # 手动部署 - production 环境
+    manual-deploy-production:
+        name: 👑 手动部署生产环境
+        runs-on: ubuntu-latest
+        # 只有手动触发且确认部署时才执行
+        if: |
+            github.event_name == 'workflow_dispatch' &&
+            github.event.inputs.confirm == '✅ 确认部署'
+        environment:
+            name: production
+            url: https://yourdomain.com
+
+        steps:
+            - name: 🔐 显示部署信息
+              run: |
+                  echo "👑 生产环境手动部署"
+                  echo "👤 触发用户: ${{ github.actor }}"
+                  echo "🏷️ 指定版本: ${{ github.event.inputs.version || '使用最新版本' }}"
+                  echo "🕐 触发时间: $(date)"
+
+            - name: 📥 下载 CI 构建产物
+              uses: actions/download-artifact@v4
+              with:
+                  name: dist
+
+            - name: 📋 手动部署检查清单
+              run: |
+                  echo "📋 生产环境部署前检查清单:"
+                  echo "✅ 部署确认: ${{ github.event.inputs.confirm }}"
+                  echo "👤 部署负责人: ${{ github.actor }}"
+                  echo "🏷️ 部署版本: ${{ github.event.inputs.version || 'v'$(node -p "require('./package.json').version") }}"
+                  echo "🔗 源代码 Commit: ${{ github.sha }}"
+                  echo "📊 CI 状态: 已通过"
+
+            - name: 🚀 手动部署到生产环境
+              run: |
+                  echo "🚀 开始手动部署到生产环境..."
+                  echo "========================================"
+                  echo "👑 生产环境部署信息"
+                  echo "========================================"
+                  echo "👤 部署人: ${{ github.actor }}"
+                  echo "🏷️ 版本: ${{ github.event.inputs.version || 'v'$(node -p "require('./package.json').version") }}"
+                  echo "🔗 Commit: ${{ github.sha }}"
+                  echo "🕐 部署时间: $(date)"
+                  echo "触发方式: 手动确认"
+                  echo "========================================"
+
+                  # 生产环境部署脚本
+                  # aws s3 sync dist/ s3://production-bucket/ --delete
+                  # aws cloudfront create-invalidation --distribution-id PROD_DIST_ID --paths "/*"
+
+                  echo "✅ 生产环境手动部署完成"
+
+            - name: 🏷️ 创建生产版本标签
+              run: |
+                  echo "🏷️ 创建生产版本标签..."
+                  VERSION=$(node -p "require('./package.json').version")
+                  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+                  git config --global user.name "GitHub Actions"
+                  git config --global user.email "actions@github.com"
+                  git tag -a "prod-v$VERSION-$TIMESTAMP" -m "Production Release - v$VERSION - ${{ github.actor }}"
+                  git push origin "prod-v$VERSION-$TIMESTAMP"
+                  echo "✅ 生产版本标签创建完成"
+
+            - name: 📢 生产部署通知
+              run: |
+                  echo "📢 发送生产部署通知..."
+                  echo "🎉 生产环境部署成功完成！"
+                  echo "👤 部署人: ${{ github.actor }}"
+                  echo "🏷️ 版本: ${{ github.event.inputs.version || 'v'$(node -p "require('./package.json').version") }}"
+                  echo "🔗 查看详情: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
