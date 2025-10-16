@@ -3,6 +3,7 @@
         <el-button type="primary"> 主要按钮 </el-button>
         <p>bangbbeng</p>
         <p>999</p>
+        <p>鹅鹅鹅</p>
         <Index />
     </div>
 </template>

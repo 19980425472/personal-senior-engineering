@@ -3,7 +3,7 @@ name: Main Branch CI/CD
 on:
     push:
         branches: [main]
-    workflow_dispatch: # 手动触发
+    workflow_dispatch:
 
 env:
     NODE_VERSION: '22'
@@ -40,11 +40,11 @@ jobs:
                   npx vue-tsc --noEmit
                   echo "✅ 代码检查通过"
 
-            # - name: 🔒 安全扫描
-            #   run: |
-            #       echo "🔒 运行安全扫描..."
-            #       npx audit --audit-level moderate
-            #       echo "✅ 安全扫描通过"
+            - name: 🔒 安全扫描
+              run: |
+                  echo "🔒 运行安全扫描..."
+                  npx audit --audit-level moderate
+                  echo "✅ 安全扫描通过"
 
             - name: 🏗️ 构建项目
               run: |
@@ -60,6 +60,8 @@ jobs:
                     exit 1
                   fi
                   echo "📊 构建产物大小: $(du -sh dist | cut -f1)"
+                  echo "📁 构建产物内容:"
+                  ls -la dist/
                   echo "✅ 构建产物验证通过"
 
             - name: 📤 上传构建产物
@@ -85,6 +87,19 @@ jobs:
               uses: actions/download-artifact@v4
               with:
                   name: dist
+                  path: . # 关键修复：下载到当前目录
+
+            - name: 🔍 检查下载的文件
+              run: |
+                  echo "🔍 检查当前目录文件..."
+                  ls -la
+                  echo "🔍 检查构建产物..."
+                  if [ -d "dist" ]; then
+                    echo "📁 dist 目录内容:"
+                    ls -la dist/
+                  else
+                    echo "❌ dist 目录不存在"
+                  fi
 
             - name: 🔍 部署前验证
               run: |
@@ -98,10 +113,19 @@ jobs:
                   # 验证构建产物
                   if [ ! -d "dist" ] || [ -z "$(ls -A dist)" ]; then
                     echo "❌ 构建产物无效"
+                    echo "当前目录内容:"
+                    ls -la
+                    if [ -d "dist" ]; then
+                      echo "dist 目录内容:"
+                      ls -la dist/
+                    fi
                     exit 1
                   fi
 
                   echo "✅ 部署前验证通过"
+                  echo "📊 构建产物详情:"
+                  echo "大小: $(du -sh dist | cut -f1)"
+                  echo "文件数量: $(find dist -type f | wc -l)"
 
             - name: 🏷️ 创建版本标签
               run: |
@@ -130,41 +154,24 @@ jobs:
                   echo "Commit: ${{ github.sha }}"
                   echo "触发方式: ${{ github.event_name }}"
                   echo "时间: $(date)"
-                  echo "构建产物: $(du -sh dist | cut -f1)"
+                  echo "构建产物大小: $(du -sh dist | cut -f1)"
+                  echo "构建产物文件: $(find dist -type f | wc -l) 个文件"
                   echo "========================================"
 
-                  # ========== 你的部署脚本从这里开始 ==========
-
-                  # 示例：显示构建产物内容（验证用）
-                  echo "📁 构建产物内容预览:"
-                  find dist -name "*.html" -o -name "*.js" | head -5 | while read file; do
-                    echo "  - $file"
+                  # 显示部分构建产物内容
+                  echo "📁 主要构建文件:"
+                  find dist -name "*.html" -o -name "*.js" | head -8 | while read file; do
+                    echo "  📄 $file"
                   done
 
-                  # 示例：GitHub Pages 部署
-                  # echo "🌐 部署到 GitHub Pages..."
-                  # npx gh-pages -d dist
-
-                  # 示例：Vercel 部署
-                  # echo "▲ 部署到 Vercel..."
-                  # npx vercel --prod --token ${{ secrets.VERCEL_TOKEN }}
-
-                  # 示例：服务器部署
-                  # echo "🖥️  部署到服务器..."
-                  # echo "${{ secrets.SSH_PRIVATE_KEY }}" > private_key
-                  # chmod 600 private_key
-                  # rsync -avz -e "ssh -i private_key -o StrictHostKeyChecking=no" dist/ user@server:/path/to/app/
-
-                  # 如果没有配置具体部署，使用模拟部署
-                  echo "📝 部署脚本占位符 - 请配置实际部署逻辑"
-                  echo "✅ 部署流程完成"
+                  echo "✅ 部署准备完成"
+                  echo "📝 请在此处添加实际部署脚本"
 
             - name: 📢 部署完成通知
               run: |
                   echo "📢 部署完成通知"
                   VERSION=$(node -p "require('./package.json').version")
-                  echo "🎉 生产环境部署成功！"
+                  echo "🎉 生产环境部署准备完成！"
                   echo "🏷️ 版本: v$VERSION"
                   echo "🔗 Commit: ${{ github.sha }}"
-                  echo "🕐 完成时间: $(date)"
-                  echo "🔗 详情: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  echo "🕐 时间: $(date)"
