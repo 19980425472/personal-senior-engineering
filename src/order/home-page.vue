@@ -1,6 +1,7 @@
 <template>
     <div class="homePage-wrapper">
         <el-button type="primary"> 主要按钮 </el-button>
+        <p>bangbbeng</p>
         <Index />
     </div>
 </template>
