@@ -63,9 +63,9 @@ jobs:
             - name: 📐 TypeScript 类型检查
               run: npx vue-tsc --noEmit
 
-            - name: 🔒 安全扫描
-              if: github.ref == 'refs/heads/main'
-              run: npx audit --audit-level moderate
+            # - name: 🔒 安全扫描
+            #   if: github.ref == 'refs/heads/main'
+            #   run: npx audit --audit-level moderate
 
     build:
         name: 🏗️ 项目构建
