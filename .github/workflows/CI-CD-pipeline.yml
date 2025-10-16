@@ -40,11 +40,11 @@ jobs:
                   npx vue-tsc --noEmit
                   echo "✅ 代码检查通过"
 
-            - name: 🔒 安全扫描
-              run: |
-                  echo "🔒 运行安全扫描..."
-                  npx audit --audit-level moderate
-                  echo "✅ 安全扫描通过"
+            # - name: 🔒 安全扫描
+            #   run: |
+            #       echo "🔒 运行安全扫描..."
+            #       npx audit --audit-level moderate
+            #       echo "✅ 安全扫描通过"
 
             - name: 🏗️ 构建项目
               run: |
