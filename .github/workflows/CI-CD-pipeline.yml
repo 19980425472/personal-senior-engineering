@@ -72,7 +72,7 @@ jobs:
                   name: dist-artifact
                   path: dist/
                   retention-days: 7
-                  if-no-files-found: error # 如果没有文件则报错
+                  if-no-files-found: error
 
     # CD 阶段 - main 分支部署
     deploy-main:
@@ -81,16 +81,20 @@ jobs:
         needs: ci
         environment:
             name: production
+        permissions:
+            contents: write # 添加写入权限
 
         steps:
             - name: 📥 检出代码（用于版本信息）
               uses: actions/checkout@v4
+              with:
+                  token: ${{ secrets.GITHUB_TOKEN }} # 明确指定 token
 
             - name: 📥 下载构建产物
               uses: actions/download-artifact@v4
               with:
                   name: dist-artifact
-                  path: ./downloaded-dist # 下载到指定目录
+                  path: ./downloaded-dist
 
             - name: 🔍 检查下载的文件
               run: |
@@ -142,9 +146,9 @@ jobs:
                   VERSION=$(node -p "require('./package.json').version")
                   echo "检测到版本: $VERSION"
 
-                  # 配置 git
-                  git config --global user.name "GitHub Actions"
-                  git config --global user.email "actions@github.com"
+                  # 配置 git（使用正确的认证）
+                  git config --global user.name "github-actions[bot]"
+                  git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
                   # 创建并推送标签
                   git tag -a "v$VERSION" -m "Production Release v$VERSION - ${{ github.sha }}"
