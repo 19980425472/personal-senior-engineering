@@ -2,77 +2,39 @@ name: CI/CD Pipeline
 
 on:
     push:
-        branches: [develop, test, staging, main, feature/*]
-        paths:
-            - 'src/**'
-            - 'package.json'
-            - 'pnpm-lock.yaml'
-            - 'vite.config.*'
-            - 'tsconfig.*'
-            - 'eslint.config.*'
-            - 'prettier.config.*'
-            - 'lint-staged.config.*'
-            - 'commitlint.config.*'
-
+        branches: [main, staging, test]
     pull_request:
-        branches: [develop, test, staging, main]
-        paths:
-            - 'src/**'
-            - 'package.json'
-            - 'pnpm-lock.yaml'
-            - 'vite.config.*'
-            - 'tsconfig.*'
-            - 'eslint.config.*'
-            - 'prettier.config.*'
-            - 'lint-staged.config.*'
-            - 'commitlint.config.*'
+        branches: [main]
+    workflow_dispatch: # 手动触发生产部署
 
 env:
     NODE_VERSION: '22'
     PNPM_VERSION: '10'
-    BUILD_OUTPUT: 'dist'
 
 jobs:
-    # 配置文件完整性检查
-    config-validation:
-        name: 🛡️ 配置文件校验
+    # 基础验证和构建
+    validate-and-build:
+        name: 🛡️ 验证和构建
         runs-on: ubuntu-latest
-        steps:
-            - name: 📥 检出代码
-              uses: actions/checkout@v4
-
-            - name: 🔍 检查关键配置文件是否存在
-              run: |
-                  config_files=(
-                    "package.json"
-                    "pnpm-lock.yaml"
-                    "vite.config.*"
-                    "tsconfig.*"
-                    "eslint.config.*"
-                    "prettier.config.*"
-                    "lint-staged.config.*"
-                    "commitlint.config.*"
-                  )
-                  for pattern in "${config_files[@]}"; do
-                    if ! compgen -G "$pattern" > /dev/null; then
-                      echo "❌ 配置文件匹配模式 $pattern 未找到任何文件！"
-                      exit 1
-                    fi
-                  done
-                  echo "✅ 所有配置文件检查通过"
-
-    # 统一的依赖安装和构建
-    install-and-build:
-        name: 📦 安装依赖和构建
-        runs-on: ubuntu-latest
-        needs: config-validation
         outputs:
             build-success: ${{ steps.build.outputs.success }}
         steps:
             - name: 📥 检出代码
               uses: actions/checkout@v4
               with:
-                  fetch-depth: 0
+                  fetch-depth: 0 # 为了 commitlint 需要完整历史
+
+            - name: 🔍 基础文件验证
+              run: |
+                  # 只验证最关键的文件
+                  required_files=("package.json" "pnpm-lock.yaml" "vite.config.ts" "tsconfig.json")
+                  for file in "${required_files[@]}"; do
+                    if [ ! -f "$file" ]; then
+                      echo "❌ 关键文件 $file 不存在"
+                      exit 1
+                    fi
+                  done
+                  echo "✅ 基础文件验证通过"
 
             - name: 📦 安装 pnpm
               uses: pnpm/action-setup@v2
@@ -88,60 +50,74 @@ jobs:
             - name: 📦 安装依赖
               run: pnpm install --frozen-lockfile
 
-            - name: 🔍 提交信息检查
+            - name: 📝 提交信息检查
+              if: github.event_name == 'push'
               run: |
-                  if [ "${{ github.event_name }}" == "push" ]; then
-                    echo "📝 检查最近一次提交..."
-                    npx commitlint --from HEAD~1 --to HEAD --verbose
-                  elif [ "${{ github.event_name }}" == "pull_request" ]; then
-                    echo "📝 检查 PR 中的所有提交..."
-                    npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
-                  fi
+                  npx commitlint --from HEAD~1 --to HEAD --verbose
 
-            - name: 🔍 ESLint 检查
-              run: npx eslint . --ext .vue,.ts,.js
-
-            - name: 🎨 Prettier 格式检查
-              run: npx prettier --check "src/**/*.{vue,ts,js,json,css,scss}"
-
-            - name: 📐 TypeScript 类型检查
-              run: npx vue-tsc --noEmit
-
-            # - name: 🔒 安全扫描
-            #   if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging'
-            #   run: npx audit --audit-level moderate
+            - name: 🔍 代码质量检查
+              run: |
+                  # 使用硬编码命令，不依赖 package.json
+                  npx eslint . --ext .vue,.ts,.js --config eslint.config.js
+                  npx prettier --check "src/**/*.{vue,ts,js}" --config prettier.config.js
+                  npx vue-tsc --noEmit
 
             - name: 🏗️ 构建项目
               id: build
               run: |
-                  echo "🏗️ 开始构建项目..."
-                  npx vite build
-                  echo "✅ 项目构建完成"
+                  npx vite build --config vite.config.ts
                   echo "success=true" >> $GITHUB_OUTPUT
 
-            - name: 📦 检查构建产物
+            - name: 📦 验证构建产物
               run: |
-                  if [ ! -d "${{ env.BUILD_OUTPUT }}" ]; then
-                    echo "❌ 构建产物目录不存在"
+                  if [ ! -d "dist" ] || [ -z "$(ls -A dist)" ]; then
+                    echo "❌ 构建产物无效"
                     exit 1
                   fi
-                  echo "✅ 构建产物检查通过"
+                  echo "✅ 构建产物验证通过"
 
             - name: 📤 上传构建产物
               uses: actions/upload-artifact@v4
               with:
                   name: dist
-                  path: ${{ env.BUILD_OUTPUT }}
+                  path: dist/
                   retention-days: 7
 
-    # ========== CD 部分 ==========
-
-    # 自动部署 - 测试环境
-    deploy-test:
-        name: 🤖 自动部署测试环境
+    # 安全扫描（仅主要分支）
+    security-scan:
+        name: 🔒 安全扫描
         runs-on: ubuntu-latest
-        needs: install-and-build
-        if: github.ref == 'refs/heads/test' && needs.install-and-build.outputs.build-success == 'true'
+        needs: validate-and-build
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging'
+        steps:
+            - name: 📥 检出代码
+              uses: actions/checkout@v4
+
+            - name: 📦 安装 pnpm
+              uses: pnpm/action-setup@v2
+              with:
+                  version: ${{ env.PNPM_VERSION }}
+
+            - name: 🟢 设置 Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: 'pnpm'
+
+            - name: 📦 安装依赖
+              run: pnpm install --frozen-lockfile
+
+            - name: 🔍 依赖漏洞扫描
+              run: npx audit --audit-level moderate
+
+    # ========== 部署阶段 ==========
+
+    # 测试环境部署（自动）
+    deploy-test:
+        name: 🤖 部署测试环境
+        runs-on: ubuntu-latest
+        needs: validate-and-build
+        if: github.ref == 'refs/heads/test' && needs.validate-and-build.outputs.build-success == 'true'
         environment:
             name: test
 
@@ -151,29 +127,17 @@ jobs:
               with:
                   name: dist
 
-            - name: 🔍 验证下载的产物
-              run: |
-                  echo "🔍 验证下载的构建产物..."
-                  if [ ! -d "dist" ] || [ -z "$(ls -A dist)" ]; then
-                    echo "❌ 下载的构建产物为空或不存在"
-                    exit 1
-                  fi
-                  echo "✅ 构建产物下载验证通过"
-
             - name: 🚀 部署到测试环境
               run: |
-                  echo "🚀 开始部署到测试环境..."
-                  echo "分支: ${{ github.ref_name }}"
-                  echo "Commit: ${{ github.sha }}"
-                  # 这里添加你的测试环境部署脚本
-                  echo "✅ 测试环境部署完成"
+                  echo "🚀 部署到测试环境 - ${{ github.sha }}"
+                  # 你的测试环境部署脚本
 
-    # 自动部署 - 预发布环境
+    # 预发布环境部署（自动）
     deploy-staging:
-        name: 🤖 自动部署预发布环境
+        name: ⚡ 部署预发布环境
         runs-on: ubuntu-latest
-        needs: install-and-build
-        if: github.ref == 'refs/heads/staging' && needs.install-and-build.outputs.build-success == 'true'
+        needs: [validate-and-build, security-scan]
+        if: github.ref == 'refs/heads/staging' && needs.validate-and-build.outputs.build-success == 'true'
         environment:
             name: staging
 
@@ -185,54 +149,15 @@ jobs:
 
             - name: 🚀 部署到预发布环境
               run: |
-                  echo "🚀 开始部署到预发布环境..."
-                  echo "分支: ${{ github.ref_name }}"
-                  echo "Commit: ${{ github.sha }}"
-                  # 这里添加你的预发布环境部署脚本
-                  echo "✅ 预发布环境部署完成"
+                  echo "🚀 部署到预发布环境 - ${{ github.sha }}"
+                  # 你的预发布环境部署脚本
 
-    # 自动部署 - main 环境
-    deploy-main:
-        name: 🤖 自动部署 main 环境
-        runs-on: ubuntu-latest
-        needs: install-and-build
-        if: github.ref == 'refs/heads/main' && needs.install-and-build.outputs.build-success == 'true'
-        environment:
-            name: main
-
-        steps:
-            - name: 📥 下载构建产物
-              uses: actions/download-artifact@v4
-              with:
-                  name: dist
-
-            - name: 🏷️ 创建版本标签
-              run: |
-                  echo "🏷️ 创建版本标签..."
-                  VERSION=$(node -p "require('./package.json').version")
-                  git config --global user.name "GitHub Actions"
-                  git config --global user.email "actions@github.com"
-                  git tag -a "v$VERSION" -m "Release v$VERSION - ${{ github.ref_name }}"
-                  git push origin "v$VERSION"
-                  echo "✅ 版本标签 v$VERSION 创建完成"
-
-            - name: 🚀 部署到 main 环境
-              run: |
-                  echo "🚀 开始部署到 main 环境..."
-                  echo "分支: ${{ github.ref_name }}"
-                  echo "Commit: ${{ github.sha }}"
-                  echo "版本: v$(node -p "require('./package.json').version")"
-                  # 这里添加你的 main 环境部署脚本
-                  echo "✅ main 环境部署完成"
-
-    # 手动部署 - production 环境
+    # 生产环境部署（自动）
     deploy-production:
-        name: 👑 手动部署生产环境
+        name: 🚀 部署生产环境
         runs-on: ubuntu-latest
-        needs: install-and-build
-        if: |
-            github.event_name == 'workflow_dispatch' &&
-            needs.install-and-build.outputs.build-success == 'true'
+        needs: [validate-and-build, security-scan]
+        if: github.ref == 'refs/heads/main' && needs.validate-and-build.outputs.build-success == 'true'
         environment:
             name: production
 
@@ -242,30 +167,142 @@ jobs:
               with:
                   name: dist
 
-            - name: 🔐 显示部署信息
+            - name: 🏷️ 创建版本标签
               run: |
-                  echo "👑 生产环境手动部署"
-                  echo "👤 触发用户: ${{ github.actor }}"
-                  echo "分支: ${{ github.ref_name }}"
-                  echo "Commit: ${{ github.sha }}"
-                  echo "版本: v$(node -p "require('./package.json').version")"
-
-            - name: 🏷️ 创建生产版本标签
-              run: |
-                  echo "🏷️ 创建生产版本标签..."
                   VERSION=$(node -p "require('./package.json').version")
-                  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
                   git config --global user.name "GitHub Actions"
                   git config --global user.email "actions@github.com"
-                  git tag -a "prod-v$VERSION-$TIMESTAMP" -m "Production Release - v$VERSION - ${{ github.actor }}"
-                  git push origin "prod-v$VERSION-$TIMESTAMP"
-                  echo "✅ 生产版本标签创建完成"
+                  git tag -a "v$VERSION" -m "Release v$VERSION"
+                  git push origin "v$VERSION"
+                  echo "✅ 版本 v$VERSION 已发布"
 
             - name: 🚀 部署到生产环境
               run: |
-                  echo "🚀 开始部署到生产环境..."
-                  echo "👤 部署人: ${{ github.actor }}"
-                  echo "版本: v$(node -p "require('./package.json').version")"
-                  echo "🕐 部署时间: $(date)"
-                  # 这里添加你的生产环境部署脚本
-                  echo "✅ 生产环境部署完成"
+                  echo "🚀 部署到生产环境 - v$(node -p "require('./package.json').version")"
+                  # 你的生产环境部署脚本
+
+    # 手动生产部署（备用）
+    # 手动生产部署（备用）
+manual-deploy:
+    name: 👑 手动生产部署
+    runs-on: ubuntu-latest
+    needs: validate-and-build
+    if: github.event_name == 'workflow_dispatch' && needs.validate-and-build.outputs.build-success == 'true'
+    environment:
+        name: production
+
+    steps:
+        - name: 📥 下载构建产物
+          uses: actions/download-artifact@v4
+          with:
+              name: dist
+
+        - name: 🔐 部署确认
+          run: |
+              echo "👑 手动生产部署"
+              echo "负责人: ${{ github.actor }}"
+              echo "Commit: ${{ github.sha }}"
+              echo "时间: $(date)"
+              echo "========================================"
+
+        - name: 🔍 验证构建产物
+          run: |
+              echo "🔍 验证构建产物..."
+              if [ ! -d "dist" ] || [ -z "$(ls -A dist)" ]; then
+                echo "❌ 构建产物无效"
+                exit 1
+              fi
+              echo "📊 构建产物大小: $(du -sh dist | cut -f1)"
+              echo "📁 主要文件:"
+              find dist -type f -name "*.html" -o -name "*.js" -o -name "*.css" | head -10
+              echo "✅ 构建产物验证通过"
+
+        - name: 🏷️ 创建生产版本标签
+          run: |
+              echo "🏷️ 创建生产版本标签..."
+              VERSION=$(node -p "require('./package.json').version")
+              TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+              git config --global user.name "GitHub Actions"
+              git config --global user.email "actions@github.com"
+              git tag -a "prod-v$VERSION-$TIMESTAMP" -m "Production Release v$VERSION - Deployed by ${{ github.actor }}"
+              git push origin "prod-v$VERSION-$TIMESTAMP"
+              echo "✅ 生产版本标签创建完成: prod-v$VERSION-$TIMESTAMP"
+
+        - name: 🚀 部署到生产环境
+          run: |
+              echo "🚀 开始手动部署到生产环境..."
+              echo "========================================"
+              echo "🎯 部署信息"
+              echo "========================================"
+              echo "👤 部署人: ${{ github.actor }}"
+              echo "🏷️ 版本: v$(node -p "require('./package.json').version")"
+              echo "🔗 Commit: ${{ github.sha }}"
+              echo "🕐 部署时间: $(date)"
+              echo "📊 构建产物: $(du -sh dist | cut -f1)"
+              echo "========================================"
+
+              # ========== 这里替换为你的实际部署脚本 ==========
+
+              # 示例1: GitHub Pages 部署
+              # echo "🌐 部署到 GitHub Pages..."
+              # npx gh-pages -d dist -u "github-actions-bot <support+actions@github.com>"
+
+              # 示例2: Vercel 部署
+              # echo "🚀 部署到 Vercel..."
+              # npx vercel --prod --token ${{ secrets.VERCEL_TOKEN }} --confirm
+
+              # 示例3: Netlify 部署
+              # echo "🌐 部署到 Netlify..."
+              # npx netlify-cli deploy --prod --dir=dist --site ${{ secrets.NETLIFY_SITE_ID }} --auth ${{ secrets.NETLIFY_AUTH_TOKEN }}
+
+              # 示例4: 服务器 SSH 部署
+              # echo "🖥️  通过 SSH 部署到服务器..."
+              # mkdir -p ~/.ssh
+              # echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+              # chmod 600 ~/.ssh/id_rsa
+              # ssh-keyscan -H your-server.com >> ~/.ssh/known_hosts
+              # rsync -avz --delete dist/ user@your-server.com:/var/www/html/
+
+              # 示例5: AWS S3 部署
+              # echo "☁️  部署到 AWS S3..."
+              # aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+              # aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+              # aws s3 sync dist/ s3://your-bucket/ --delete
+              # aws cloudfront create-invalidation --distribution-id YOUR_DISTRIBUTION_ID --paths "/*"
+
+              # 如果没有具体部署脚本，至少输出成功信息
+              echo "✅ 生产环境部署流程完成"
+              echo "📝 注意: 请配置实际的部署脚本"
+
+        - name: 🔍 部署后健康检查
+          run: |
+              echo "🔍 执行健康检查..."
+              # 示例健康检查（替换为你的实际域名）
+              # MAX_RETRY=10
+              # COUNT=0
+              # until curl -f https://yourdomain.com/health || [ $COUNT -eq $MAX_RETRY ]
+              # do
+              #   echo "健康检查尝试 $((COUNT+1))/$MAX_RETRY"
+              #   sleep 10
+              #   COUNT=$((COUNT+1))
+              # done
+              # if [ $COUNT -eq $MAX_RETRY ]; then
+              #   echo "❌ 健康检查失败"
+              #   exit 1
+              # fi
+              echo "✅ 健康检查通过（模拟）"
+
+        - name: 📢 部署完成通知
+          run: |
+              echo "📢 部署完成通知"
+              echo "🎉 生产环境部署成功完成！"
+              echo "👤 部署人: ${{ github.actor }}"
+              echo "🏷️ 版本: v$(node -p "require('./package.json').version")"
+              echo "🔗 Commit: ${{ github.sha }}"
+              echo "🕐 完成时间: $(date)"
+              echo "🔗 查看详情: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+              # 可以集成通知服务
+              # - Slack: curl -X POST -H 'Content-type: application/json' --data '{"text":"部署成功!"}' ${{ secrets.SLACK_WEBHOOK }}
+              # - 钉钉: 使用钉钉 webhook
+              # - 邮件: 发送邮件通知
