@@ -2,6 +2,7 @@
     <div class="homePage-wrapper">
         <el-button type="primary"> 主要按钮 </el-button>
         <p>bangbbeng</p>
+        <p>999</p>
         <Index />
     </div>
 </template>
