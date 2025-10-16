@@ -6,7 +6,7 @@ on:
         paths:
             - 'src/**'
             - 'package.json'
-            - 'pnpm-lock.yaml' # pnpm 使用这个锁文件
+            - 'pnpm-lock.yaml'
             - 'vite.config.ts'
             - 'tsconfig.json'
             - 'prettier.config.js'
@@ -19,7 +19,7 @@ on:
         paths:
             - 'src/**'
             - 'package.json'
-            - 'pnpm-lock.yaml' # pnpm 使用这个锁文件
+            - 'pnpm-lock.yaml'
             - 'vite.config.ts'
             - 'tsconfig.json'
             - 'prettier.config.js'
@@ -41,31 +41,29 @@ jobs:
             - name: 📥 检出代码
               uses: actions/checkout@v4
               with:
-                  fetch-depth: 0 # 获取完整历史记录
-
-            - name: 🟢 设置 Node.js
-              uses: actions/setup-node@v4
-              with:
-                  node-version: ${{ env.NODE_VERSION }}
-                  cache: 'pnpm'
+                  fetch-depth: 0
 
             - name: 📦 安装 pnpm
               uses: pnpm/action-setup@v4
               with:
                   version: ${{ env.PNPM_VERSION }}
 
+            - name: 🟢 设置 Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: 'pnpm' # 现在 pnpm 已经安装，可以正确缓存了
+
             - name: 📦 安装依赖
               run: pnpm install --frozen-lockfile
 
             - name: 🔍 检查提交信息格式
               run: |
-                  # 检查最近一次提交（针对 push 事件）
                   if [ "${{ github.event_name }}" == "push" ]; then
                     echo "检查最近一次提交..."
                     pnpm commitlint --from HEAD~1 --to HEAD --verbose
                   fi
 
-                  # 检查 PR 中的所有提交
                   if [ "${{ github.event_name }}" == "pull_request" ]; then
                     echo "检查 PR 中的所有提交..."
                     pnpm commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
@@ -80,16 +78,16 @@ jobs:
             - name: 📥 检出代码
               uses: actions/checkout@v4
 
+            - name: 📦 安装 pnpm
+              uses: pnpm/action-setup@v2
+              with:
+                  version: ${{ env.PNPM_VERSION }}
+
             - name: 🟢 设置 Node.js
               uses: actions/setup-node@v4
               with:
                   node-version: ${{ env.NODE_VERSION }}
                   cache: 'pnpm'
-
-            - name: 📦 安装 pnpm
-              uses: pnpm/action-setup@v4
-              with:
-                  version: ${{ env.PNPM_VERSION }}
 
             - name: 📦 安装依赖
               run: pnpm install --frozen-lockfile
@@ -109,16 +107,16 @@ jobs:
             - name: 📥 检出代码
               uses: actions/checkout@v4
 
+            - name: 📦 安装 pnpm
+              uses: pnpm/action-setup@v2
+              with:
+                  version: ${{ env.PNPM_VERSION }}
+
             - name: 🟢 设置 Node.js
               uses: actions/setup-node@v4
               with:
                   node-version: ${{ env.NODE_VERSION }}
                   cache: 'pnpm'
-
-            - name: 📦 安装 pnpm
-              uses: pnpm/action-setup@v4
-              with:
-                  version: ${{ env.PNPM_VERSION }}
 
             - name: 📦 安装依赖
               run: pnpm install --frozen-lockfile
