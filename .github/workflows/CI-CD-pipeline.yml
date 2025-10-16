@@ -42,9 +42,9 @@ jobs:
 
             # - name: 🔒 安全扫描
             #   run: |
-            #       echo "🔒 运行安全扫描..."
-            #       npx audit --audit-level moderate
-            #       echo "✅ 安全扫描通过"
+            #     echo "🔒 运行安全扫描..."
+            #     npx audit --audit-level moderate
+            #     echo "✅ 安全扫描通过"
 
             - name: 🏗️ 构建项目
               run: |
@@ -57,6 +57,8 @@ jobs:
                   echo "📦 验证构建产物..."
                   if [ ! -d "dist" ] || [ -z "$(ls -A dist)" ]; then
                     echo "❌ 构建产物无效"
+                    echo "当前目录内容:"
+                    ls -la
                     exit 1
                   fi
                   echo "📊 构建产物大小: $(du -sh dist | cut -f1)"
@@ -67,9 +69,10 @@ jobs:
             - name: 📤 上传构建产物
               uses: actions/upload-artifact@v4
               with:
-                  name: dist
+                  name: dist-artifact
                   path: dist/
                   retention-days: 7
+                  if-no-files-found: error # 如果没有文件则报错
 
     # CD 阶段 - main 分支部署
     deploy-main:
@@ -86,19 +89,26 @@ jobs:
             - name: 📥 下载构建产物
               uses: actions/download-artifact@v4
               with:
-                  name: dist
-                  path: . # 关键修复：下载到当前目录
+                  name: dist-artifact
+                  path: ./downloaded-dist # 下载到指定目录
 
             - name: 🔍 检查下载的文件
               run: |
-                  echo "🔍 检查当前目录文件..."
+                  echo "🔍 检查下载的构建产物..."
+                  echo "当前目录内容:"
                   ls -la
-                  echo "🔍 检查构建产物..."
-                  if [ -d "dist" ]; then
-                    echo "📁 dist 目录内容:"
-                    ls -la dist/
+                  echo "下载目录内容:"
+                  ls -la downloaded-dist/
+
+                  # 将构建产物移动到正确位置
+                  if [ -d "downloaded-dist" ] && [ -n "$(ls -A downloaded-dist)" ]; then
+                    echo "📦 移动构建产物到 dist 目录..."
+                    rm -rf dist 2>/dev/null || true
+                    mv downloaded-dist dist
+                    echo "✅ 构建产物移动完成"
                   else
-                    echo "❌ dist 目录不存在"
+                    echo "❌ 下载的构建产物无效"
+                    exit 1
                   fi
 
             - name: 🔍 部署前验证
@@ -115,10 +125,8 @@ jobs:
                     echo "❌ 构建产物无效"
                     echo "当前目录内容:"
                     ls -la
-                    if [ -d "dist" ]; then
-                      echo "dist 目录内容:"
-                      ls -la dist/
-                    fi
+                    echo "dist 目录内容:"
+                    ls -la dist/ 2>/dev/null || echo "dist 目录不存在"
                     exit 1
                   fi
 
