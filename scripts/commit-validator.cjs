@@ -127,9 +127,7 @@ class CommitValidator {
             const author = execSync('git config user.name', { encoding: 'utf8' }).trim()
 
             if (!author) {
-                console.log(
-                    chalk.yellow('⚠️  无法获取git用户信息，请配置: git config user.name "你的姓名"')
-                )
+                console.log(chalk.yellow('⚠️ 无法获取git用户信息,请配置你的姓名'))
                 return
             }
 
