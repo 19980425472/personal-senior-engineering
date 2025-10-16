@@ -181,6 +181,15 @@ jobs:
                   path: ${{ env.BUILD_OUTPUT }}
                   retention-days: 7
 
+            - name: 📤 上传构建产物
+              uses: actions/upload-artifact@v4
+              with:
+                  name: dist
+                  path: dist/
+                  retention-days: 7
+                  # 确保使用相同的仓库
+                  repository: ${{ github.repository }}
+
     # 安全扫描（可选）
     security:
         name: 🔒 安全扫描
