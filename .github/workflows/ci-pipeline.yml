@@ -49,8 +49,8 @@ jobs:
                     "pnpm-lock.yaml"
                     "vite.config.*"
                     "tsconfig.*"
-                    "eslint-config.*"
-                    "prettier-config.*"
+                    "eslint.config.*"
+                    "prettier.config.*"
                     "lint-staged.config.*"
                     "commitlint.config.*"
                   )
