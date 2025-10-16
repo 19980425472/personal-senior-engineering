@@ -134,6 +134,10 @@ export interface DynamicAliasPluginOptions extends AliasGeneratorOptions {
     generateAlias: (options: AliasGeneratorOptions) => Promise<AliasConfig[]>
 }
 
+export const defaultLogger = {
+    info: (msg: string) => console.log(`[AliasGenerator] ${msg}`),
+    warn: (msg: string) => console.warn(`[AliasGenerator] ⚠️ ${msg}`)
+}
 // ============================
 // 默认别名生成策略
 // ============================
@@ -261,7 +265,8 @@ export function dynamicAliasPlugin(options: DynamicAliasPluginOptions): Plugin {
             writeAliasesToTsconfig(baseAlias)
             console.log('他妈的~~~', baseAlias)
 
-            console.log(`[dynamicAlias] 目录${action}: ${path.relative(projectRoot, dirPath)}，别名已更新`)
+            console.log(`
+                [dynamicAlias] 目录${action}: ${path.relative(projectRoot, dirPath)}，别名已更新`)
         } catch (err) {
             console.error(`[dynamicAlias] 目录${action}后更新别名失败:`, err)
         }
@@ -385,7 +390,7 @@ async function processDirectory(
 ): Promise<void> {
     // 检测目录循环引用
     if (visitedDirs.has(dir)) {
-        logger.warn(`检测到目录循环引用: ${dir}`)
+        defaultLogger.warn(`检测到目录循环引用: ${dir}`)
         return
     }
     visitedDirs.add(dir)
@@ -394,13 +399,13 @@ async function processDirectory(
 
     // 日志：递归深度警告
     if (currentDepth > 5) {
-        logger.warn(`递归深度超过阈值: ${currentDepth}（目录: ${dir}）`)
+        defaultLogger.warn(`递归深度超过阈值: ${currentDepth}（目录: ${dir}）`)
     }
     const dirName = path.basename(dir)
     const relPath = path.relative(projectRoot, dir)
 
     if (isExcluded(dir, dirName)) {
-        logger.info(`排除目录: ${relPath}`)
+        defaultLogger.info(`排除目录: ${relPath}`)
         return
     }
 
@@ -409,16 +414,16 @@ async function processDirectory(
         stats = await fsPromises.lstat(dir)
     } catch (e: unknown) {
         if (e instanceof Error) {
-            logger.warn(`无法访问目录: ${relPath}（${e.message}）`)
+            defaultLogger.warn(`无法访问目录: ${relPath}（${e.message}）`)
         } else {
-            logger.warn(`无法访问目录: ${relPath}（未知错误：${String(e)}）`)
+            defaultLogger.warn(`无法访问目录: ${relPath}（未知错误：${String(e)}）`)
         }
         return
     }
 
     if (stats.isSymbolicLink()) {
         if (!opts.followSymlinks) {
-            logger.info(`跳过符号链接: ${relPath}`)
+            defaultLogger.info(`跳过符号链接: ${relPath}`)
             return
         }
 
@@ -428,16 +433,16 @@ async function processDirectory(
         } catch (e: unknown) {
             if (e instanceof Error) {
                 // 此时 e 会被 TypeScript 推断为 Error 类型，可安全访问 message
-                logger.warn(`无法解析符号链接: ${relPath}（${e.message}）`)
+                defaultLogger.warn(`无法解析符号链接: ${relPath}（${e.message}）`)
             } else {
                 // 极端情况：有人 throw 了非 Error 类型（比如 throw "出错了"），做兼容处理
-                logger.warn(`无法解析符号链接: ${relPath}（未知错误：${String(e)}）`)
+                defaultLogger.warn(`无法解析符号链接: ${relPath}（未知错误：${String(e)}）`)
             }
             return
         }
 
         if (symlinkVisited.has(realPath)) {
-            logger.warn(`循环引用: ${relPath} → ${path.relative(projectRoot, realPath)}`)
+            defaultLogger.warn(`循环引用: ${relPath} → ${path.relative(projectRoot, realPath)}`)
             return
         }
 
@@ -471,16 +476,17 @@ async function processDirectory(
         if (aliasMap.has(aliasKey)) {
             switch (opts.conflictStrategy) {
                 case 'skip':
-                    logger.warn(`跳过重名目录: ${relPath}（已存在别名 ${aliasKey}）`)
+                    defaultLogger.warn(`跳过重名目录: ${relPath}（已存在别名 ${aliasKey}）`)
                     return
                 case 'overwrite':
-                    logger.warn(`覆盖重名目录: ${relPath}（别名 ${aliasKey}）`)
+                    defaultLogger.warn(`覆盖重名目录: ${relPath}（别名 ${aliasKey}）`)
                     break
                 case 'append': {
                     const count = aliasCounter.get(aliasKey) || 1
                     finalAliasKey = `${aliasKey}_${count}`
                     aliasCounter.set(aliasKey, count + 1)
-                    logger.info(`重名目录自动编号: ${aliasKey} → ${finalAliasKey}（${relPath}）`)
+                    // prettier-ignore
+                    defaultLogger.info(`重名目录自动编号: ${aliasKey} → ${finalAliasKey}（${relPath}）`)
                     break
                 }
             }
@@ -493,7 +499,7 @@ async function processDirectory(
             find: finalAliasKey
         })
 
-        // logger.info(`生成别名: ${finalAliasKey} → ${relPath}`);
+        // defaultLogger.info(`生成别名: ${finalAliasKey} → ${relPath}`);
     }
 
     if (currentDepth >= opts.depth) {
@@ -518,15 +524,17 @@ async function processDirectory(
     }
 }
 
+// prettier-ignore
 async function readDirSafe(dir: string, logger: ReturnType<typeof createLogger>): Promise<string[]> {
+    console.info(logger)
     try {
         const entries = await fsPromises.readdir(dir, { withFileTypes: true })
         return entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name)
     } catch (e: unknown) {
         if (e instanceof Error) {
-            logger.warn(`读取目录失败: ${dir}（${e.message}）`)
+            defaultLogger.warn(`读取目录失败: ${dir}（${e.message}）`)
         } else {
-            logger.warn(`读取目录失败: ${dir}（未知错误：${String(e)}）`)
+            defaultLogger.warn(`读取目录失败: ${dir}（未知错误：${String(e)}）`)
         }
         return []
     }
@@ -593,6 +601,7 @@ export async function writeAliasesToTsconfig(
         aliases.forEach((alias) => {
             if (typeof alias.find !== 'string') return
             const relativePath = path.relative(targetAbsPath, alias.replacement).replace(/\\/g, '/') // 统一路径分隔符
+            // prettier-ignore
             newPaths[`${alias.find}/*`] = [`${targetDir}/${relativePath}${relativePath ? '/*' : ''}`]
         })
 

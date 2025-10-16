@@ -1,5 +1,6 @@
 // 路由核心（全局路由注册、路由守卫、模块路由汇总）
-// import { createRouter, createWebHistory } from 'vue-router'
+// TODO: Replace with pinia logic
+// import { defineStore } from 'pinia'
 // import { userRoutes } from '../../modules/user/routes'
 
 // const router = createRouter({
