@@ -7,6 +7,7 @@ import Order from '@order/Index.vue'
 <template>
     <div>
         <h2>你看看CD成功没有</h2>
+        <h2>这是CD的</h2>
         <MittComponent />
         <MD />
         <Order />
